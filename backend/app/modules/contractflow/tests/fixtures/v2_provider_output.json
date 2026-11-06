@@ -1,0 +1,9 @@
+{
+  "sections": [
+    {"source_ref": "scope", "text": "Develop a responsive website of three pages for the bakery, using copy and images supplied by the client."},
+    {"source_ref": "deliverables/0", "text": "Provide the source files for the home, menu and contact pages."},
+    {"source_ref": "deliverables/1", "text": "Provide instructions for deploying the website."},
+    {"source_ref": "milestones/0", "text": "Supply the source files for the website pages."},
+    {"source_ref": "milestones/1", "text": "Supply documentation describing website deployment."}
+  ]
+}

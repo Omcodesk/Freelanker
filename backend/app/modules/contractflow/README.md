@@ -1,5 +1,79 @@
 # ContractFlow backend: isolated contract draft pipeline
 
+## V2: opt-in professional agreement draft
+
+V1 remains unchanged, including its extractive service and live-test command.
+V2 uses the same validated `ProjectInput`, provider protocol, Groq adapter and
+environment configuration, with no additional dependencies:
+
+```python
+from backend.app.modules.contractflow.v2.service import AgreementDraftService
+from backend.app.modules.contractflow.v2.render import render_agreement
+
+# Within an async caller; provider can be GroqProvider(settings) or a fake.
+async def make_v2_draft(provider, project_data):
+    draft = await AgreementDraftService(provider).generate_contract(project_data)
+    return draft, render_agreement(draft)
+```
+
+For a configured Groq provider, pass `timeout_seconds=settings.timeout_seconds`
+to `AgreementDraftService` as well. V2 returns an immutable `AgreementDraft` with
+the authoritative snapshot, separate source-linked `ai_wording`, and six
+deterministically assembled sections: parties, scope, deliverables, timeline,
+compensation and unresolved terms. The plain-text renderer revalidates its input
+and includes the original descriptions beside proposed prose. It creates no files.
+
+AI can paraphrase scope, deliverable and milestone descriptions, but cannot
+populate identities, budgets, currencies, dates, headings or review status.
+The service alone copies these authoritative facts. Every source must occur
+exactly once; unknown references, extra fields and omitted/duplicate sources fail.
+Numeric tokens must match their own source (including equivalents from zero
+through twenty), and common currency values/symbols in prose are rejected.
+Conservative lexical checks reject selected legal/commercial terms, obligation
+markers, new negation/qualification and control characters. Detected issues fail
+generation; there is no automatic retry, silent correction or V1 fallback.
+
+**These checks do not prove semantic equivalence.** Keeping original facts
+unchanged in structured fields does not guarantee that proposed prose preserves
+them. Changed formats, scope, responsibilities, spelled-out values, implicit
+deadlines, invented names, synonyms and obfuscated obligations can escape these
+heuristics. Benign references to acceptance or licensing can also be rejected.
+Tests explicitly demonstrate a format-changing false negative and a conservative
+false positive. Source references are provenance hints, not entailment proofs.
+Project instructions are treated as untrusted data in prompts, but prompt
+injection cannot be ruled out through prompting or keyword checks.
+
+All V2 results enforce `semantic_review_required=True` and report only
+`passed; semantic equivalence not established` for deterministic checks.
+The mandatory draft label and human-review requirement cannot be removed through
+validated deserialization. A reviewer must compare every proposed paragraph
+against its source, especially output format, exclusions, duties and timing.
+The renderer does not treat the original text as a cure for contradictory prose.
+Unresolved legal/commercial terms are server-controlled; V2 never drafts those
+clauses. Source text can itself be unsuitable and also needs human review.
+
+Run all V1 and V2 offline tests with the existing test command below. The new
+`tests/fixtures/v2_provider_output.json` contains synthetic paraphrases for the
+website project; it is not a live Groq response. The module owner reported a
+successful V2 live test with `openai/gpt-oss-120b`, passing deterministic checks
+and retaining mandatory human semantic review. The existing `live_test.py`
+intentionally continues to exercise V1 only.
+
+For one explicit V2 live request, run from the repository root in your configured
+PowerShell session:
+
+```powershell
+python -B -m backend.app.modules.contractflow.live_test_v2
+```
+
+This reads the existing Groq environment configuration and synthetic website
+fixture, calls `AgreementDraftService` once with SDK retries disabled, revalidates
+the serialized draft and compares its authoritative snapshot against the input.
+It prints the model, deterministic-check status and full rendered agreement,
+including unresolved terms and mandatory human semantic review. It suppresses
+raw provider errors and SDK logging. Exit codes: 0 for deterministic validation
+success, 1 for failure, 130 for interruption. Success is not semantic approval.
+
 Person 2 owns only this backend module and its local tests. Another teammate
 owns frontend development and UI integration. There are no shared backend,
 database, authentication, WorkBridge or payment dependencies.
