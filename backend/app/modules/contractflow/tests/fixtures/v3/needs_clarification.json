@@ -1,0 +1,6 @@
+{
+  "request_id": "SYNTHETIC-REQUEST-UNCLEAR",
+  "project_id": "SYNTHETIC-WEB-001",
+  "client_request": "Make the menu interactive.",
+  "supporting_context": [{"id": "SYNTHETIC-CONTEXT-A", "text": "The client has not described the intended interaction."}]
+}
