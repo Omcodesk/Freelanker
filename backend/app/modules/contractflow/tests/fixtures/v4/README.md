@@ -14,3 +14,10 @@ or effective amendments. The synthetic decision authorizes only test drafting.
 
 Changes to these inputs may invalidate the pinned explicit live demo. Never repin
 production records or inject the test verifier into a real review workflow.
+
+## Legacy presentation fixture
+
+`legacy_render.txt` is deterministic synthetic bakery output captured before the
+professional presentation change, with a fixed fictional draft UUID. It checks
+byte-identical legacy rendering and immutable V5/V6 digest compatibility. It is
+not a retained live Groq response, real agreement, approval or legal instrument.

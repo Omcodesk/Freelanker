@@ -128,7 +128,7 @@ class AmendmentDraft(Schema):
 
     @model_validator(mode="after")
     def invariant_draft(self):
-        from .renderer import render_text
+        from .renderer import render_text, render_text_legacy
         from .review import validate_receipt
         from .validation import validate_wording
 
@@ -142,6 +142,9 @@ class AmendmentDraft(Schema):
         validate_wording(self.request_snapshot, self.proposals)
         if self.unresolved_terms != UNRESOLVED:
             raise ValueError("Unresolved terms cannot be changed")
-        if self.rendered_text != render_text(self.draft_id, self.request_snapshot, self.proposals):
+        # Preserve byte-identical historical artifacts/digests. New generation
+        # uses professional templates, but reads never rewrite legacy text.
+        if (self.rendered_text != render_text_legacy(self.draft_id, self.request_snapshot, self.proposals)
+                and self.rendered_text != render_text(self.draft_id, self.request_snapshot, self.proposals)):
             raise ValueError("Rendered content must be deterministic")
         return self

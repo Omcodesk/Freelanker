@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 FIELDS = frozenset("changes change_index additional_scope deliverable_proposal timeline compensation citations reference excerpt text response proposals request_snapshot original_agreement original_facts original_agreement_id original_agreement_version project_id assessment_id assessment_version verified_review rendered_text draft_id status notice effective human_review_required semantic_review_required parties_approved unresolved_terms version deterministic_validation".split())
 CHECKS = frozenset("UNKNOWN_REFERENCE EXCERPT_NOT_EXACT DUPLICATE_REFERENCE REQUIRED_REQUEST_CITATION_MISSING REQUEST_EXCERPT_INCOMPLETE REVIEWED_ASSESSMENT_CITATION_MISSING ASSESSMENT_EXCERPT_INCOMPLETE AGREEMENT_CONTEXT_MISSING AUTHORITATIVE_FACT_CITATION_MISSING AUTHORITATIVE_FACT_EXCERPT_INCOMPLETE BASELINE_REFERENCE_NOT_GROUNDED BASELINE_ROLE_AMBIGUOUS MATERIAL_CONTENT_CONTRADICTION SCHEMA_MISSING SCHEMA_EXTRA_FIELD SCHEMA_INVALID INVALID_JSON RESPONSE_TYPE RESPONSE_SIZE PROPOSAL_LANGUAGE CONTENT_VOCABULARY CHANGE_COVERAGE MATERIAL_CONTENT PROVIDER_INCOMPLETE_OUTPUT".split())
+CHECKS = CHECKS | {"WORDING_QUALITY"}
 CATEGORIES = frozenset({"AGREEMENT", "REQUEST", "ASSESSMENT", "LEGACY_V3_REFERENCE", "UNKNOWN", "NONE"})
 
 

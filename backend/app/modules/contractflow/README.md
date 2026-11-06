@@ -1,5 +1,50 @@
 # ContractFlow backend: isolated contract draft pipeline
 
+## V4 presentation quality and historical compatibility
+
+New V4 generation uses deterministic professional presentation. The AI still
+returns structured, cited proposal interpretations; all existing vocabulary,
+evidence, financial/date, obligation and conditional-language checks run BEFORE
+rendering. Raw validated AI interpretations remain in `proposals` for human
+comparison and are included in approval digests. The main document explicitly
+quotes the exact reviewed requested-change description under proposed-scope and
+deliverable labels. It does not claim to repair or prove equivalence of AI prose.
+Timeline/compensation use neutral review notices, not predictions of new work,
+prices or deadlines. Headings, unresolved terms, review/approval and non-effectiveness
+notices are server-controlled. Original facts and evidence excerpts are unchanged.
+
+Offline reproduction showed the former lexical gate accepted `, require
+negotiation`, `A proposed timeline ...` and `A proposed compensation ...`: allowed
+word coverage is not grammar checking. New generation rejects these narrow
+patterns and joined `proposedaddition`/missing-colon-space defects rather than
+silently repairing them. The current vocabulary gate already rejects the exact
+observed `proposedaddition` sample; its historical acceptance cannot be established
+from the present code. The legacy renderer already emits `Termination conditions:
+unresolved` with a space; the reported no-space variant is not reproduced by this
+renderer. No claim is made about an unretained response or downstream display.
+Prompts now request short complete sentences, while standard prose is rendered
+by the application. Source descriptions may themselves be awkward and are never
+rewritten; the quality checks are not a comprehensive grammar or entailment model.
+
+Historical V4 canonical text remains valid through an explicit legacy renderer.
+No schema fields, digest algorithm, V5/V6 API contracts or stored text are changed
+on read. Both representations must match their exact canonical renderer after
+the original safety checks; arbitrary text remains invalid. The professional
+representation additionally passes new quality checks. There is no automatic
+repair or upgrade of historical content and no fallback retry during generation.
+The public `generate_amendment` service always produces the professional view;
+`render_amendment` returns the validated stored representation unchanged.
+
+Changing an existing artifact to the professional representation changes its V5
+digest and V6 archive digest. Publish it as the NEXT immutable amendment revision,
+obtain fresh exact-version/digest human and semantic review, and collect both
+approvals again; never update rows or retain prior approvals. Legacy approvals
+remain bound only to their byte-identical legacy artifact. Even if a presentation
+is unchanged, changing embedded AI interpretations changes the full-artifact
+digest. No database migration or automatic backfill is implemented. Synthetic
+legacy fixture and V5/V6 tests cover exact round trips, hash changes, supersession
+and refusal of old decisions. V6 remains blocked on shared production adapters.
+
 ## V6: shared-backend integration boundaries
 
 V6 exports a fail-closed FastAPI router at `/api/v1/contractflow` and integration
