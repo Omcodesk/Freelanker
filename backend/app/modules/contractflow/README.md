@@ -1,5 +1,39 @@
 # ContractFlow backend: isolated contract draft pipeline
 
+## V6: shared-backend integration boundaries
+
+V6 exports a fail-closed FastAPI router at `/api/v1/contractflow` and integration
+orchestration over unchanged V1–V5 services. It does **not** mount a shared app or
+provide production authentication, WorkBridge, review authority or PostgreSQL
+durability: none of those shared systems exist in this checkout. No live calls,
+migrations, table creation or shared-file edits were performed.
+
+See [V6_HANDOFF.md](V6_HANDOFF.md) for the compatibility matrix, all eight
+endpoints and examples, runtime/dependency contracts, review/revocation policy,
+Core-owned mounting instructions, test command and exact production blockers.
+The [PostgreSQL design](persistence/POSTGRESQL_DESIGN.md) is a proposal, not an
+operational adapter or executed migration. Synthetic adapters live only in tests.
+No runtime is selected automatically; missing auth gives401 and an unconfigured
+integration gives503. All required ports must be explicitly supplied by Core.
+
+HTTP requests carry IDs/expected source versions and untrusted change text only.
+Authority comes from SharedAuth and complete versioned WorkBridge snapshots.
+Stored artifacts revalidate typed domain payloads, exact snapshots and digests.
+Current source is rechecked after AI generation; persistence must repeat that
+check atomically at commit. Approval registration, decisions and reads use a
+required shared transaction port, recheck current artifact/source and trusted
+assessment/amendment reviews, and preserve V5 atomic/idempotency rules. A real
+adapter must serialize review revocation with decisions; the test lock cannot
+establish distributed correctness. Archive digests and V5 approval digests are
+different and must not be interchanged.
+
+Tests exercise the full V1–V5 workflow through an in-process ASGI app using fake
+providers and synthetic adapters, with external clients blocked. No real database
+or authentication has been tested. The shared application entry point and runtime
+must be supplied by Core before a production startup command is meaningful.
+BOTH_APPROVED remains a recorded workflow state, never activation, a signature,
+legal enforceability or payment authorization. effective remains false.
+
 ## V5: client and freelancer approval records
 
 V5 is deterministic and offline; it generates no AI wording and changes no V4
