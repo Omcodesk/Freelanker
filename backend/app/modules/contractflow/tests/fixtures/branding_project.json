@@ -1,0 +1,18 @@
+{
+  "project_id": "SYNTHETIC-BRAND-001",
+  "title": "Fictional studio branding",
+  "client": {"id": "TEST-CLIENT-2", "name": "Example Studio (Synthetic)"},
+  "freelancer": {"id": "TEST-FREELANCER-2", "name": "Example Designer (Synthetic)"},
+  "scope": "Design a visual identity for a fictional pottery studio.",
+  "budget": "65000.00",
+  "currency": "INR",
+  "start_date": "2027-02-01",
+  "deadline": "2027-02-26",
+  "deliverables": [
+    {"id": "D1", "description": "Logo artwork in SVG and PNG formats.", "deadline": "2027-02-19"},
+    {"id": "D2", "description": "Brand colour and typography guide in PDF format.", "deadline": "2027-02-26"}
+  ],
+  "milestones": [
+    {"id": "M1", "description": "Deliver logo artwork and visual identity guide.", "deadline": "2027-02-26", "deliverable_ids": ["D1", "D2"]}
+  ]
+}

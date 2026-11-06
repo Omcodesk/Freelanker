@@ -1,0 +1,19 @@
+{
+  "project_id": "SYNTHETIC-WEB-001",
+  "title": "Fictional bakery website",
+  "client": {"id": "TEST-CLIENT-1", "name": "Example Bakery (Synthetic)"},
+  "freelancer": {"id": "TEST-FREELANCER-1", "name": "Example Developer (Synthetic)"},
+  "scope": "Build a responsive three-page bakery website using client-supplied copy and images.",
+  "budget": "1200.00",
+  "currency": "USD",
+  "start_date": "2027-01-04",
+  "deadline": "2027-01-29",
+  "deliverables": [
+    {"id": "D1", "description": "Home, menu and contact page source files.", "deadline": "2027-01-22"},
+    {"id": "D2", "description": "Website deployment instructions.", "deadline": "2027-01-29"}
+  ],
+  "milestones": [
+    {"id": "M1", "description": "Deliver website page source files.", "deadline": "2027-01-22", "deliverable_ids": ["D1"]},
+    {"id": "M2", "description": "Deliver deployment documentation.", "deadline": "2027-01-29", "deliverable_ids": ["D2"]}
+  ]
+}

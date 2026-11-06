@@ -1,1 +1,1 @@
-"""ContractFlow module for Freelanker; Phase 0 foundation only."""
+"""Isolated ContractFlow draft generation; no application infrastructure."""
