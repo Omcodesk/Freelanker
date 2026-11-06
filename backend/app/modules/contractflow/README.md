@@ -1,5 +1,377 @@
 # ContractFlow backend: isolated contract draft pipeline
 
+## V4: proposed contract amendments
+
+Final verification: the user-run synthetic ordering live test with
+`openai/gpt-oss-120b` returned `DETERMINISTIC_CHECKS_PASSED`, with human and semantic
+review required, effective false, and original budget/deadline unchanged. The full
+live response is not retained in this repository. Awkward timeline and compensation
+wording remains a known semantic-quality limitation; deterministic checks do not
+certify professional wording or contractual equivalence. No validation exceptions
+or untested wording changes were introduced for finalization.
+
+### Proposal-language failures
+
+`UNSAFE_PROPOSAL / PROPOSAL_LANGUAGE` groups inherited numerical/date,
+obligation, schedule-change and control-character failures, V4's forbidden
+words, and absence of could/may/might/proposed/unresolved. It does not identify
+which trigger occurred. The latest lost deliverable response cannot be
+reconstructed from that diagnostic. No validator defect was established.
+
+The prompt now gives an ordering-specific conditional example validated offline:
+`A proposed deliverable could cover online ordering with payment integration,
+subject to negotiation.` Other requests must retain their own reviewed concepts.
+Even negated binding/effective language and subject-to-approval/acceptance clauses
+are rejected in AI proposal text; the server renders the approval notice. Amounts
+and dates remain outside proposal prose. No rejected output is automatically
+rewritten, and proposal markers do not bypass vocabulary, coverage or citations.
+These checks are conservative filters, not proof that any permitted sentence is
+semantically equivalent to the reviewed request. Human review remains mandatory.
+
+### Provider rejection troubleshooting
+
+Confirmed synthetic live metadata `400 / invalid_request_error /
+json_validate_failed` identifies provider-side JSON generation validation failure,
+before local amendment parsing. It does not reveal the rejected text, whether
+quotes/formatting were malformed, or whether output/context limits contributed.
+No raw rejected generation was retained. V4 now explicitly requires one JSON
+object without Markdown/commentary, correct JSON escaping, closed structures,
+and exactly the schema's response fields. Citation equality concerns decoded
+strings, so escaping quotes/backslashes/control characters preserves evidence.
+No automatic JSON repair, retry or contractual-content substitution is performed.
+
+[Groq's structured-output documentation](https://console.groq.com/docs/structured-outputs)
+lists `openai/gpt-oss-120b` for strict JSON Schema output. The existing adapter
+supports JSON-object mode only. This correction retains that mode and the shared
+adapter unchanged: documented model support alone does not establish compatibility
+of every schema constraint with constrained decoding. No V4 wrapper or guessed
+token limit was introduced. The schema uses reusable object definitions and no
+recursive models or union alternatives; excessive complexity/truncation has not
+been established as the cause. Output must still pass the unchanged Pydantic,
+evidence, wording, immutable-snapshot and review validators.
+
+The V4 runner reports sanitized `http_status`, `provider_error_type`,
+`provider_error_code` and `retryable` metadata. Only fixed recognized type/code
+values are shown; unknown/unavailable values are `null`. Messages, raw response
+bodies, failed-generation text, headers and request content are never printed.
+Retryability is advisory (408/409/429/5xx or connectivity/timeout); SDK retries
+remain disabled and the runner never retries automatically. V4 timeout failures
+retain their separate timeout report.
+
+The existing adapter sends model, system/user messages, JSON-object response mode
+and temperature zero. It sends no explicit token limit, strict JSON-schema API
+parameter, tools or reasoning settings. The output schema is supplied in the
+prompt and independently validated after generation. A successful models GET
+does not prove that a particular chat-completion request will be accepted.
+Without the original rejection metadata, request-format/model/JSON-generation/
+context-limit/provider-side causes cannot be distinguished offline. Do not change
+request parameters or weaken validation based solely on `PROVIDER_REJECTION`.
+
+One explicitly user-run synthetic retest can capture the sanitized status/code:
+
+```powershell
+python -B -m backend.app.modules.contractflow.live_test_v4 --run-live --scenario ordering
+```
+
+For example, `json_validate_failed` identifies provider JSON-generation rejection;
+`context_length_exceeded` identifies a context-limit rejection. Unknown codes stay
+suppressed, so some failures will still require a provider-side investigation
+without sharing confidential request/response content.
+
+### Existing deliverables versus proposed additions
+
+Proposed deliverable wording uses the specific reviewed change/request vocabulary,
+not the union of agreement words. A narrowly supported existing-work reference is
+a standalone `Existing deliverable: "verbatim full description".` followed by a
+separate conditional proposal sentence. It requires the exact full description
+from an `agreement.deliverables/<index>/description` source in that field's own
+citations. Evidence and quoted text are not Unicode-normalized. The quoted span
+cannot supply proposed material coverage or authorize agreement terminology
+elsewhere. Numerical, obligation and approval safeguards still inspect all prose.
+Prefer leaving baseline context to the deterministic renderer.
+
+Missing/changed baseline evidence reports `BASELINE_REFERENCE_NOT_GROUNDED`;
+ambiguous inline role wording reports `BASELINE_ROLE_AMBIGUOUS`. Diagnostics contain
+fixed rule/category metadata, never quoted content. Vocabulary token positions
+continue to refer to the original proposal text. Detectable direct negation of
+proposed work is rejected; lexical coverage cannot establish semantic equivalence
+or detect every misleading relationship between otherwise permitted words.
+Human and semantic review remain mandatory.
+
+The historical deliverable failure's four unsupported words were not retained.
+Two agreement-only occurrences establish their vocabulary origin, not their role
+or correctness. Offline tests demonstrate a labeled-baseline false positive in the
+former flat check; they do not reconstruct that historical response.
+
+### V4 wording vocabulary and safe token diagnostics
+
+Additional-scope vocabulary is lexical, not a semantic grammar classifier. A
+harmless unlisted connector can fail just like a new feature; conversely permitted
+words can be arranged misleadingly. A focused offline example with `together with`
+documents this conservative rejection without adding vocabulary permissions.
+The prompt now explicitly restricts even connective words to the supplied closed
+list and requests short source-terminology clauses. The latest lost response's
+single-token metadata does not identify its word or establish a false positive.
+No speculative synonyms or validator exceptions were added for that failure.
+
+CONTENT_VOCABULARY compares proposal words against the SPECIFIC reviewed change
+and client-request excerpt plus a closed connective/review vocabulary. Original
+agreement words are not general permission to introduce additional features.
+For ordering, the source terms are add, an, integration, online, ordering, payment,
+system and with. A novel gateway, processor, analytics feature, platform, method
+or deliverable remains unsupported even when it sounds related to payment work.
+
+Offline reproduction confirmed the former exact-word gate rejected “payments
+integrated” although the request used “payment integration.” This does not prove
+the historical live response used those words; that response was not retained.
+V4 now permits only two explicit source-conditioned word families:
+
+- integration / integrate / integrates / integrated / integrating
+- payment / payments
+
+A family is enabled only when its concept occurs in that field's reviewed source
+content. It cannot introduce payment or integration into a request lacking it.
+The grammatical connective “including” is also permitted. No embedding score,
+unrestricted synonym expansion or generic stemming authorizes scope. Required
+material-term coverage uses the same source-conditioned forms, so changing a
+word's inflection does not falsely imply the concept was omitted. All monetary,
+date, legal/approval/obligation, citation and review checks run unchanged first.
+
+Proposal word comparison uses Unicode letters, case folding and NFC composition.
+It does not transliterate accents or normalize quotations. Punctuation/hyphen
+variants separate words consistently; exact source evidence remains untouched.
+The prompt's `wording_contract` lists preferred source terms, permitted conditional
+forms and required material terms for each output field, alongside the unchanged
+literal `citation_contract`. It explicitly prefers source terminology and forbids
+introducing technical components or payment methods not requested/reviewed.
+
+CONTENT_VOCABULARY diagnostics include `token_metadata`: unsupported unique and
+occurrence counts, at most 20 token indexes/code-point offsets and normalized
+ASCII/NON_ASCII classes, source-conditioned variant counts, and counts found only
+in original-agreement context. They contain no rejected words, source text,
+tokens' hashes, confidential identifiers, raw responses or credentials. Offsets
+identify positions within the submitted proposal field without reproducing it.
+Metadata cannot itself prove that an unknown word was harmless or material.
+
+Lexical grounding remains conservative and incomplete: unlisted synonyms may be
+rejected, while known words can be recombined misleadingly. Conditional wording
+and token overlap do not prove semantic equivalence. Mandatory human semantic
+review, proposed-only status and original facts remain invariant. One explicitly
+authorized synthetic live retest can show whether the revised constrained prompt
+passes; no live request was made while implementing these corrections.
+
+### V4 evidence troubleshooting
+
+`INVALID_EVIDENCE` is a family of strict checks, not a diagnosis by itself.
+V4 now reports sanitized `field`, `check` and `source_category` metadata, for
+example `timeline.citations.0.excerpt`, `EXCERPT_NOT_EXACT`, `AGREEMENT`.
+No rejected reference value, excerpt, prompt, input value, full provider response,
+Pydantic error message or credential is included. Unknown schema-field names are
+replaced with `<unrecognized_field>`. Up to 20 schema issues may be reported.
+
+Evidence checks are ordered: duplicate IDs; unknown catalog IDs; exact substring
+checks; required request citation and its exact expected full excerpt; required
+reviewed-assessment citation/full quote; original scope/deliverable context; and
+full original deadline/budget values for their respective consideration fields.
+Missing references and incomplete required quotes have distinct codes:
+
+| Check | Meaning |
+| --- | --- |
+| DUPLICATE_REFERENCE | A field repeated the same source ID |
+| UNKNOWN_REFERENCE | ID is absent from the V4 catalog |
+| EXCERPT_NOT_EXACT | Characters do not occur literally in the cited source |
+| REQUIRED_REQUEST_CITATION_MISSING / REQUEST_EXCERPT_INCOMPLETE | Required request evidence absent or shortened |
+| REVIEWED_ASSESSMENT_CITATION_MISSING / ASSESSMENT_EXCERPT_INCOMPLETE | Required reviewed-change/assessment evidence absent or shortened |
+| AGREEMENT_CONTEXT_MISSING | Scope/deliverable proposal lacks original work context |
+| AUTHORITATIVE_FACT_CITATION_MISSING / AUTHORITATIVE_FACT_EXCERPT_INCOMPLETE | Timeline/budget source missing or its required value incomplete |
+
+The reviewed synthetic ordering response satisfies all these checks. V4 is more
+specific than V3 field-local grounding: a valid substring is insufficient where
+V4 requires the entire reviewed change, selected request excerpt, assessment
+explanation or original scalar fact. Main/other-field citations cannot substitute
+for a field's own required citations. These checks remain strict.
+
+Inspection confirmed that the original V4 output schema reused V3 `Evidence`,
+whose description suggested an invalid `original.*` example for the V4 catalog.
+V4 now has its own `AmendmentEvidence` with correct `agreement.*` examples and
+literal, non-stripping strings. This fixes both the namespace instruction mismatch
+and silent whitespace normalization. Evidence Unicode composition, hyphen type,
+case and whitespace are not fuzzily normalized. JSON escapes decoding to identical
+characters are valid; visually similar but different excerpts are not.
+
+The V4 excerpt bound is 8000 characters to accommodate the full allowed client
+request; the prior 4000-character bound could not represent some valid inputs.
+The 64000-byte provider response cap and exact-source checks still apply.
+
+Prompts now provide `valid_source_ids` and a generated `citation_contract` with
+concrete valid reference/excerpt objects for every material output field. Copy
+those objects literally while paraphrasing proposal text only. `change_index`
+and source IDs are explicitly required; project/party IDs remain server-owned.
+No aliases, citation repair or silent coercion are used to accept failed output.
+
+These findings do not establish what the earlier live response contained: it
+was not retained. One explicit pinned synthetic rerun using the existing V4
+command below will identify the failing field/check/category, or demonstrate
+successful deterministic validation. Share only the sanitized diagnostic metadata
+if it fails; no raw response or secret is needed. The implementation was verified
+offline only and did not perform that live rerun.
+
+V4 is isolated in `v4/`. V1/V2/V3 code, providers, live runners, schemas and tests
+remain unchanged. It reuses the immutable `ProjectInput`, V3 assessment, async
+`ContractProvider`, `GroqProvider`, configuration and sanitized SDK error mapping.
+It adds no auth, database, route, frontend, PayPal, activation or approval workflow.
+
+### Public service and trusted review boundary
+
+```python
+from backend.app.modules.contractflow.v4.service import AmendmentDraftService
+
+async def propose_amendment(provider, trusted_review_verifier, request_data):
+    service = AmendmentDraftService(
+        provider, trusted_review_verifier, timeout_seconds=30
+    )
+    return await service.generate_amendment(request_data)
+```
+
+The verifier is a REQUIRED injected `ReviewVerifier` with a `boundary_reference`
+and `async verify_review(review_reference) -> VerifiedReview`. There is no default
+or permissive production implementation. Core Platform must eventually implement
+it against authenticated, current review records. It must independently check
+reviewer authority, revocation and latest agreement/assessment versions in trusted
+storage. A lookup reference, boolean or serialized receipt from an API caller is
+not review proof. This module cannot discover current stored versions itself.
+
+The trusted receipt attests `AUTHORIZE_DRAFT_GENERATION`, not amendment approval.
+It contains reviewer/review references, timezone-aware review timestamp, agreement
+and assessment IDs/versions, exact canonical SHA-256 content digests and boundary
+identity. The service checks those fields, rejects future timestamps and stops
+before the LLM if review verification fails. The only synthetic verifier lives in
+`tests/v4_support.py` and loads a pre-recorded fictional test receipt; never inject
+it into a production application. Digests bind content; they are not signatures
+or authentication. Serialized output receipts must not become authorization tokens.
+
+### Inputs, output and flow
+
+`AmendmentRequest` contains `original_agreement` (agreement ID/version and full
+`ProjectInput`), `reviewed_assessment` (assessment ID/version, agreement reference
+and V3 assessment), and `review_reference`. Only OUT_OF_SCOPE is accepted. The
+original project must exactly match the V3 snapshot. IDs, versions, review
+references and attestations must all agree. Inputs are detached, revalidated,
+immutable and limited to 128000 UTF-8 bytes.
+
+Flow: validate input -> verify trusted review -> check exact content/version
+attestation -> construct source registry and prompt -> one provider call ->
+validate proposals and local evidence -> deterministic rendering -> return a
+round-trip validated immutable `AmendmentDraft`. Review verification and provider
+generation each have the configured cooperative timeout (default 30 seconds,
+positive and at most 300). Cancellation propagates. No retries or persistence occur.
+
+Output includes a server-generated UUID, original agreement/project/assessment
+references, unchanged `original_facts`, request snapshot, verified review receipt,
+proposed scope/deliverables, timeline/compensation considerations, citations,
+unresolved terms and canonical `rendered_text`. Status is PROPOSED_DRAFT;
+`effective=False`, `parties_approved=False`, human and semantic review are mandatory.
+Every rendered draft carries:
+
+**PROPOSED AMENDMENT — NOT EFFECTIVE UNTIL BOTH PARTIES APPROVE**
+
+### Grounding, language and limitations
+
+- Each additional-scope and deliverable proposal maps to exactly one reviewed V3
+  change index, with complete unique change coverage. It must cite the exact full
+  reviewed-change description, that change's exact client-request excerpt and
+  original scope/deliverable context. Unknown paths, invented excerpts, duplicate
+  local references and unsupported change indexes fail closed.
+- Timeline and compensation fields cite the full request, full V3 explanation
+  and full original deadline/budget respectively. Those original values appear
+  only as evidence or server-rendered facts. Generated wording cannot invent or
+  restate numerical amounts, deadlines, estimates or payment schedules.
+- Proposed work/deliverable content words must come from the specific reviewed
+  change and client request, plus a closed connective/review vocabulary. Material
+  words in the reviewed description must be retained. Unrelated features and
+  unsupported deliverables are rejected. The prompt supplies this vocabulary.
+  This is intentionally conservative: novel synonyms, inflections and quantified
+  scope requests may fail validation and require a future explicitly reviewed
+  schema/grounding extension rather than automatic repair.
+- V3 quantitative/obligation/schedule safeguards are reused without exceptions
+  for proposal prose. V4 additionally rejects signatures, approval/activation
+  claims, legal terms, free/waived compensation and payment-instruction wording.
+  Conditional language is required; it does not itself prove safety.
+- Unresolved terms are server-controlled: proposed scope/deliverable details,
+  timeline, additional compensation, payment schedule and legal terms remain for
+  negotiation/review. There are no signatures, effective dates or approval records.
+- Lexical coverage and exact citations do NOT prove semantic entailment. Known
+  source words can be recombined misleadingly; a model can change responsibility,
+  implication or negation without new words. Original evidence may itself contain
+  unsuitable or malicious text. Humans must review complete source context and
+  every proposed clause. Source citations are quoted as evidence, not instructions
+  or assertions that requests became agreed terms. Future UI consumers must safely
+  escape source text. No guarantee of legal completeness/enforceability is made.
+
+The renderer separates existing agreed facts, the unagreed client request, AI
+proposals and unresolved terms. Original names, IDs, budget/currency and dates
+come from trusted snapshot fields, never model-generated replacements. A rendered
+draft is revalidated; tampered IDs, flags or text fail. The service returns data
+without logging raw prompts or responses. Input ValidationError objects can contain
+submitted values, so future API error/logging handlers must sanitize them.
+
+### Synthetic example and offline verification
+
+`tests/fixtures/v4/ordering.json` provides synthetic versioned references. Test
+support combines the unchanged website project and V3 OUT_OF_SCOPE fixtures into
+a full request. `review_record.json` is a fictional trusted test record, explicitly
+not a real approval. `provider_output.json` is a hand-authored fake response.
+
+Example proposal: “The proposed additional work could include online ordering
+with payment integration, subject to negotiation.” The original 1200.00 USD
+budget and 2027-01-29 deadline remain original facts; no additional price or new
+deadline is set. Output requires human semantic review and remains ineffective.
+
+From the repository root, in an activated Python environment:
+
+```powershell
+python -m pip install "pydantic>=2.10,<3" "groq>=1.7,<2" "pytest>=8,<10"
+$env:PYTHONDONTWRITEBYTECODE = "1"
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1"
+python -m pytest backend/app/modules/contractflow/tests -p no:cacheprovider -q
+```
+
+No new dependency is needed. All V4 unit/live-runner tests are offline, using fake
+providers or mocked SDK calls. No credentials are needed. Missing/forged/stale
+review, unsafe evidence/prose, malicious outputs, rendering tampering, timeout,
+cancellation, rate limits and authentication errors have explicit coverage.
+
+### Explicit synthetic live demo (not executed during implementation)
+
+Configure `GROQ_API_KEY` securely in your existing PowerShell environment and set
+`GROQ_MODEL=openai/gpt-oss-120b`. The existing optional timeout variable applies.
+Without `--run-live`, the script exits without a request. To explicitly run ONE
+synthetic request, from the repository root:
+
+```powershell
+python -B -m backend.app.modules.contractflow.live_test_v4 --run-live --scenario ordering
+```
+
+The entire synthetic request must match its hardcoded canonical digest before
+provider construction. The script uses only the test-support synthetic verifier
+and prints a clear fictional-review disclaimer. It never loads a production
+review. SDK retries stay disabled, including on HTTP 429. Output is the rendered
+draft and mandatory review flags; validation reports contain only fixed rule
+codes, and SDK errors only sanitized categories. No secret or raw response/error
+logging or diagnostic bypass is available. Exit codes: 0 validated draft, 1
+failure, 2 missing opt-in, 130 interruption. The user-run synthetic test passed
+deterministic checks; human semantic review remains required. Do not replace the
+pin to enable real data in this demo.
+
+### Remaining work before V5
+
+Integrate authenticated, current review verification and immutable version storage;
+define persistence/audit retention, authorization, revocation and concurrency
+rules; agree API error mapping and safely escaped UI presentation; review the
+semantic quality of synthetic live wording. V5 must separately implement dual-party approval,
+version/activation transactions and any commercial negotiation. V4 does none of
+those and never modifies the original agreement or payment instructions.
+
 ## V3: advisory AI scope change detection
 
 ### Timeline impacts: conditional assessment, never a revised schedule

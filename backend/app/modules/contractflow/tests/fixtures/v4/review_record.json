@@ -1,0 +1,13 @@
+{
+  "review_reference": "SYNTHETIC-REVIEW-1",
+  "reviewer_reference": "SYNTHETIC-REVIEWER-1",
+  "assessment_id": "SYNTHETIC-ASSESSMENT-1",
+  "assessment_version": 1,
+  "agreement_id": "SYNTHETIC-AGREEMENT-1",
+  "agreement_version": 1,
+  "agreement_digest": "ac4a926786032a9aaf1a6ad2d2be357a3c096d8ad66205e6305b2078caef9948",
+  "assessment_digest": "b117c22f55796882d6b6981a69d8622eccea63112a87a2e2c5b2f06301419707",
+  "reviewed_at": "2025-01-01T00:00:00Z",
+  "decision": "AUTHORIZE_DRAFT_GENERATION",
+  "verification_boundary": "SYNTHETIC-TEST-REVIEW-STORE"
+}
