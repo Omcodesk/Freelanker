@@ -1,25 +1,32 @@
-// Supabase client placeholder
-// Will be fully configured when Supabase Auth is implemented (next task).
-// Keys are loaded from VITE_ environment variables only.
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '';
 
-// Log a warning in development if not yet configured
-if (import.meta.env.DEV && (!supabaseUrl || !supabaseAnonKey)) {
+export const isSupabaseConfigured = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  !supabaseUrl.includes('your-project') &&
+  !supabaseAnonKey.includes('your-anon-key')
+);
+
+if (import.meta.env.DEV && !isSupabaseConfigured) {
   console.warn(
-    '[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set. ' +
-    'Copy frontend/.env.example to frontend/.env and add your Supabase credentials.'
+    '[Freelanker Supabase] Credentials not detected. ' +
+    'Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env'
   );
 }
 
-export const supabaseConfig = {
-  url: supabaseUrl ?? '',
-  anonKey: supabaseAnonKey ?? '',
-  isConfigured: Boolean(supabaseUrl && supabaseAnonKey),
-} as const;
-
-// Supabase client will be initialized here once @supabase/supabase-js is added.
-// import { createClient } from '@supabase/supabase-js';
-// export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey);
-
+// Initialize Supabase browser client with session persistence & URL token detection
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder-project.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key',
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storageKey: 'freelanker-auth-token',
+    },
+  }
+);

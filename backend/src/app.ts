@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { env } from './config/env.js';
 import healthRouter from './routes/health.route.js';
+import authRouter from './routes/auth.route.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -26,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/health', healthRouter);
+app.use('/api/auth', authRouter);
 
 // Person 2: ContractFlow router will be mounted here on merge
 // app.use('/api/contractflow', contractflowRouter);

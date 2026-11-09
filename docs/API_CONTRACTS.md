@@ -51,16 +51,59 @@ Returns service status. No authentication required.
 
 ---
 
-## 2. Authentication (Person 1 — Coming Next)
+## 2. Authentication (Person 1 — Active)
 
-> Not yet implemented. Routes will be added after Supabase Auth setup.
+Supabase Auth is used directly for user registration, email verification, login, and session persistence. The Express backend verifies Supabase access tokens server-side using the `requireAuth` middleware.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/register` | Register new user |
-| `POST` | `/api/auth/login` | Log in |
-| `POST` | `/api/auth/logout` | Log out |
-| `GET`  | `/api/auth/me` | Get current user |
+| Method | Path | Auth Required | Description |
+|--------|------|:-------------:|-------------|
+| `GET`  | `/api/auth/me` | ✅ Bearer JWT | Returns the verified user identity and associated `profiles` row |
+
+### `GET /api/auth/me`
+
+**Headers:**
+```
+Authorization: Bearer <supabase_access_token>
+```
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "email": "jane@example.com",
+      "createdAt": "2026-11-09T10:00:00.000Z",
+      "userMetadata": {
+        "full_name": "Jane Doe",
+        "default_role": "client"
+      }
+    },
+    "profile": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "displayName": "Jane Doe",
+      "headline": null,
+      "bio": null,
+      "avatarUrl": null,
+      "skills": [],
+      "portfolioLinks": [],
+      "isAvailable": true,
+      "isAdmin": false,
+      "createdAt": "2026-11-09T10:00:00.000Z",
+      "updatedAt": "2026-11-09T10:00:00.000Z"
+    }
+  }
+}
+```
+
+**Error `401`:**
+```json
+{
+  "success": false,
+  "error": "Authentication required: Missing or malformed Authorization header."
+}
+```
 
 ---
 

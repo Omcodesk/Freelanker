@@ -1,7 +1,9 @@
 // Base API client using native fetch (Node 22 / browser built-in)
+// Automatically attaches Supabase session Bearer token when authenticated
 // See docs/API_CONTRACTS.md for all available endpoints.
 
 import type { ApiResponse } from '../types/index.ts';
+import { supabase } from '../lib/supabase.ts';
 
 const BASE_URL =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ??
@@ -23,12 +25,24 @@ async function request<T>(
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
 
+  // Retrieve current session token if available
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  };
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // Session retrieval failure should not block request execution
+  }
+
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
     ...options,
+    headers,
   });
 
   const json = (await response.json()) as ApiResponse<T>;
@@ -73,4 +87,3 @@ export const api = {
 };
 
 export { ApiError };
-
