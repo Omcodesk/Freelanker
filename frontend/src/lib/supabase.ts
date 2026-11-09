@@ -22,3 +22,4 @@ export const supabaseConfig = {
 // Supabase client will be initialized here once @supabase/supabase-js is added.
 // import { createClient } from '@supabase/supabase-js';
 // export const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey);
+

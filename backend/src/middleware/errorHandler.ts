@@ -30,3 +30,4 @@ export function errorHandler(
 export function notFoundHandler(_req: Request, res: Response): void {
   res.status(404).json(errorResponse('Route not found'));
 }
+

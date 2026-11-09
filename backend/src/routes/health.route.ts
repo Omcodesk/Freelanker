@@ -7,3 +7,4 @@ const router = Router();
 router.get('/', getHealth);
 
 export default router;
+

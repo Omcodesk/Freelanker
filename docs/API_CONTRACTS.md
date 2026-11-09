@@ -180,4 +180,177 @@ type DisputeStatus =
   | 'resolution_proposed'
   | 'resolved'
   | 'closed';
+
+// Deliverable status
+type DeliverableStatus =
+  | 'submitted'
+  | 'under_review'
+  | 'revision_requested'
+  | 'approved'
+  | 'rejected';
+
+// Task status
+type TaskStatus = 'todo' | 'in_progress' | 'done' | 'cancelled';
+
+// Invitation status
+type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
+
+// Activity event types
+type ActivityEventType =
+  | 'project_created'
+  | 'project_status_changed'
+  | 'agreement_created'
+  | 'agreement_version_created'
+  | 'agreement_approved'
+  | 'agreement_activated'
+  | 'milestone_created'
+  | 'milestone_status_changed'
+  | 'deliverable_submitted'
+  | 'deliverable_approved'
+  | 'deliverable_revision_requested'
+  | 'payment_initiated'
+  | 'payment_completed'
+  | 'payment_failed'
+  | 'dispute_opened'
+  | 'dispute_resolved'
+  | 'invitation_sent'
+  | 'invitation_accepted'
+  | 'invitation_rejected'
+  | 'message_sent'
+  | 'member_added';
+
+// Detailed entity structures
+export interface Profile {
+  id: string;
+  displayName: string;
+  headline?: string;
+  bio?: string;
+  avatarUrl?: string;
+  skills: string[];
+  portfolioLinks: string[];
+  isAvailable: boolean;
+  isAdmin?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description?: string;
+  status: ProjectStatus;
+  initiatorId: string;
+  clientId?: string;
+  freelancerId?: string;
+  currency: string;
+  totalBudget?: number;
+  paymentArrangement?: PaymentArrangement;
+  aiScopeData?: Record<string, unknown>;
+  reviewPeriodDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Agreement {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  previousVersionId?: string;
+  isCurrent: boolean;
+  status: AgreementStatus;
+  title: string;
+  scopeOfWork?: string;
+  deliverablesText?: string;
+  acceptanceCriteria?: string;
+  paymentArrangement: PaymentArrangement;
+  totalAmount: number;
+  currency: string;
+  revisionLimit?: number;
+  reviewPeriodDays: number;
+  startDate?: string;
+  endDate?: string;
+  additionalTerms?: string;
+  isAiGenerated: boolean;
+  pdfUrl?: string;
+  aiSummary?: string;
+  contentSnapshot?: Record<string, unknown>;
+  clientApprovedAt?: string;
+  freelancerApprovedAt?: string;
+  activatedAt?: string;
+  supersededAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Milestone {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  status: MilestoneStatus;
+  amount: number;
+  orderIndex: number;
+  dueDate?: string;
+  isAiGenerated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Task {
+  id: string;
+  projectId: string;
+  milestoneId?: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  assignedTo?: string;
+  dueDate?: string;
+  orderIndex: number;
+  isAiGenerated: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Deliverable {
+  id: string;
+  projectId: string;
+  milestoneId?: string;
+  submittedBy: string;
+  status: DeliverableStatus;
+  title: string;
+  description?: string;
+  submissionNote?: string;
+  fileUrls: string[];
+  linkUrl?: string;
+  version: number;
+  parentId?: string;
+  reviewDeadline?: string;
+  clientFeedback?: string;
+  aiAnalysis?: Record<string, unknown>;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Payment {
+  id: string;
+  projectId: string;
+  milestoneId?: string;
+  payerId: string;
+  payeeId: string;
+  amountSnapshot: number;
+  currencySnapshot: string;
+  status: PaymentStatus;
+  arrangement: PaymentArrangement;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  paypalResponse?: Record<string, unknown>;
+  initiatedAt: string;
+  completedAt?: string;
+  createdAt: string;
+}
 ```
+

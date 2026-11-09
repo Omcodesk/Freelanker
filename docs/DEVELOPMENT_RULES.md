@@ -143,3 +143,4 @@ git push origin feature/your-branch
 - Silently approving deliverables or releasing payments automatically.
 - AI making binding decisions without human approval.
 - Exposing any secret keys in frontend bundles.
+
