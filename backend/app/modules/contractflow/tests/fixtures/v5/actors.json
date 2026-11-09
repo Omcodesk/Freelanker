@@ -1,0 +1,4 @@
+{
+  "label": "SYNTHETIC TEST DATA ONLY — not authentication credentials",
+  "contexts": {"synthetic-client": "CLIENT", "synthetic-freelancer": "FREELANCER"}
+}

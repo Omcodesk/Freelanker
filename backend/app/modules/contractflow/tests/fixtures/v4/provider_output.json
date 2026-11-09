@@ -1,0 +1,75 @@
+{
+  "changes": [
+    {
+      "change_index": 0,
+      "additional_scope": {
+        "text": "The proposed additional work could include online ordering with payment integration, subject to negotiation.",
+        "citations": [
+          {
+            "reference": "agreement.scope",
+            "excerpt": "Build a responsive three-page bakery website using client-supplied copy and images."
+          },
+          {
+            "reference": "request.client_request",
+            "excerpt": "Add an online ordering system with payment integration."
+          },
+          {
+            "reference": "assessment.requested_changes/0/description",
+            "excerpt": "Add online ordering with payment integration."
+          }
+        ]
+      },
+      "deliverable_proposal": {
+        "text": "A proposed deliverable could cover online ordering with payment integration, subject to negotiation.",
+        "citations": [
+          {
+            "reference": "agreement.scope",
+            "excerpt": "Build a responsive three-page bakery website using client-supplied copy and images."
+          },
+          {
+            "reference": "request.client_request",
+            "excerpt": "Add an online ordering system with payment integration."
+          },
+          {
+            "reference": "assessment.requested_changes/0/description",
+            "excerpt": "Add online ordering with payment integration."
+          }
+        ]
+      }
+    }
+  ],
+  "timeline": {
+    "text": "The additional work may affect the existing project timeline and requires human review before any deadline change.",
+    "citations": [
+      {
+        "reference": "agreement.deadline",
+        "excerpt": "2027-01-29"
+      },
+      {
+        "reference": "request.client_request",
+        "excerpt": "Add an online ordering system with payment integration."
+      },
+      {
+        "reference": "assessment.explanation",
+        "excerpt": "Online ordering and payment integration appear to add functionality beyond the described website and page source deliverables."
+      }
+    ]
+  },
+  "compensation": {
+    "text": "The additional work may affect compensation and requires human review before any change.",
+    "citations": [
+      {
+        "reference": "agreement.budget",
+        "excerpt": "1200.00"
+      },
+      {
+        "reference": "request.client_request",
+        "excerpt": "Add an online ordering system with payment integration."
+      },
+      {
+        "reference": "assessment.explanation",
+        "excerpt": "Online ordering and payment integration appear to add functionality beyond the described website and page source deliverables."
+      }
+    ]
+  }
+}
