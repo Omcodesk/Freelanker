@@ -636,6 +636,7 @@ BEGIN
            NEW.review_period_days IS DISTINCT FROM OLD.review_period_days OR
            NEW.start_date IS DISTINCT FROM OLD.start_date OR
            NEW.end_date IS DISTINCT FROM OLD.end_date OR
+           NEW.activated_at IS DISTINCT FROM OLD.activated_at OR
            NEW.client_approved_at IS DISTINCT FROM OLD.client_approved_at OR
            NEW.freelancer_approved_at IS DISTINCT FROM OLD.freelancer_approved_at THEN
             RAISE EXCEPTION 'Activated agreement terms are immutable. Create a new version for amendments.';

@@ -173,7 +173,7 @@ GRANT UPDATE (title, description, order_index, due_date) ON TABLE public.milesto
 ## 6. Retention and Immutability Safeguards
 
 1. **Agreements**:
-   Activated agreements cannot have their content or amounts modified. Any change requires a new record with `version_number = N + 1`.
+   Activated agreements cannot have their content, amounts, dates, or `activated_at` timestamp modified. Resetting `activated_at` is strictly blocked by `trg_agreement_immutable_after_activation`. Any term change requires a new record with `version_number = N + 1`.
 2. **Payments & Payment Events**:
    `payments` and `payment_events` tables reject `DELETE` via `ON DELETE RESTRICT` constraints and lack any `DELETE` RLS policies.
 3. **Activity Logs**:

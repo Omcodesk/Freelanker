@@ -286,7 +286,7 @@ Safe public discovery projection for the freelancer marketplace.
 3. **`trg_deliverable_integrity`**: Blocks linking a deliverable to a foreign milestone or foreign parent deliverable; automatically increments revision version.
 4. **`trg_agreement_approval_member_check`**: Ensures the approving user is a member of the project with the specified role.
 5. **`trg_dispute_member_check`**: Asserts both dispute participants are verified project members.
-6. **`trg_agreement_immutable_after_activation`**: Blocks any modifications to all agreed terms (scope, deliverables, criteria, dates, amounts, snapshots) once an agreement is activated.
+6. **`trg_agreement_immutable_after_activation`**: Blocks any modifications to all agreed terms (scope, deliverables, criteria, dates, amounts, snapshots, and `activated_at` timestamp) once an agreement is activated.
 7. **`trg_set_review_deadline`**: Computes `review_deadline` using the project's `review_period_days`.
 8. **`trg_set_updated_at`**: Automatically touches `updated_at` on updates across all core entities. All trigger functions execute with `SET search_path = public, pg_temp`.
 
