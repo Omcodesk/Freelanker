@@ -1,0 +1,50 @@
+# ─── Environment & Secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+*.env
+
+# ─── Node Modules ─────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+
+# ─── Build Outputs ────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+**/dist/
+**/build/
+
+# ─── Frontend (Vite) ──────────────────────────────────────────────────────────
+frontend/.vite/
+frontend/dist/
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── OS / Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.local
+coverage/
+.nyc_output/
