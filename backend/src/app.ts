@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import { env } from './config/env.js';
 import healthRouter from './routes/health.route.js';
 import authRouter from './routes/auth.route.js';
+import projectRouter from './routes/project.route.js';
+import invitationRouter from './routes/invitation.route.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -28,6 +30,8 @@ app.use(express.urlencoded({ extended: true }));
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/projects', projectRouter);
+app.use('/api/invitations', invitationRouter);
 
 // Person 2: ContractFlow router will be mounted here on merge
 // app.use('/api/contractflow', contractflowRouter);

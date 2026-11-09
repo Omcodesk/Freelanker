@@ -82,6 +82,49 @@ export interface ProjectMember {
   joinedAt: string;
 }
 
+export interface CreateProjectDTO {
+  title: string;
+  description?: string;
+  role: 'client' | 'freelancer';
+  currency?: string;
+  totalBudget?: number;
+  paymentArrangement?: PaymentArrangement;
+  reviewPeriodDays?: number;
+  aiScopeData?: Record<string, unknown>;
+}
+
+export interface UpdateProjectDTO {
+  title?: string;
+  description?: string;
+  currency?: string;
+  totalBudget?: number;
+  paymentArrangement?: PaymentArrangement;
+  reviewPeriodDays?: number;
+}
+
+export interface ProjectDetail {
+  project: Project;
+  currentUserRole: 'client' | 'freelancer';
+  members: Array<{
+    id: string;
+    userId: string;
+    role: 'client' | 'freelancer';
+    joinedAt: string;
+    profile: {
+      displayName: string;
+      avatarUrl?: string;
+    };
+  }>;
+  activeInvitation?: {
+    id: string;
+    invitedEmail: string;
+    role: 'client' | 'freelancer';
+    status: InvitationStatus;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+}
+
 export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
 
 export interface Invitation {
@@ -97,6 +140,26 @@ export interface Invitation {
   expiresAt: string;
   respondedAt?: string;
   createdAt: string;
+}
+
+export interface CreateInvitationDTO {
+  email: string;
+  message?: string;
+}
+
+export interface InvitationDetail extends Invitation {
+  invitationLink?: string;
+  project?: {
+    id: string;
+    title: string;
+    currency: string;
+    totalBudget?: number;
+    status: ProjectStatus;
+  } | null;
+  inviter?: {
+    displayName: string;
+    avatarUrl?: string;
+  } | null;
 }
 
 // ─── Agreement & Approvals (ContractFlow) ──────────────────────────────────────

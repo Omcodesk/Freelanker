@@ -9,6 +9,8 @@ declare global {
       user?: {
         id: string;
         email: string;
+        isEmailVerified: boolean;
+        emailConfirmedAt?: string | null;
         createdAt: string;
         userMetadata?: Record<string, unknown>;
       };
@@ -53,9 +55,12 @@ export async function requireAuth(
     }
 
     // Attach verified user identity from Supabase Auth server
+    const isEmailVerified = Boolean(user.email_confirmed_at || user.user_metadata?.email_verified);
     req.user = {
       id: user.id,
       email: user.email ?? '',
+      isEmailVerified,
+      emailConfirmedAt: user.email_confirmed_at ?? null,
       createdAt: user.created_at,
       userMetadata: user.user_metadata,
     };
@@ -94,9 +99,12 @@ export async function optionalAuth(
     } = await supabaseAuth.auth.getUser(token);
 
     if (!error && user) {
+      const isEmailVerified = Boolean(user.email_confirmed_at || user.user_metadata?.email_verified);
       req.user = {
         id: user.id,
         email: user.email ?? '',
+        isEmailVerified,
+        emailConfirmedAt: user.email_confirmed_at ?? null,
         createdAt: user.created_at,
         userMetadata: user.user_metadata,
       };
