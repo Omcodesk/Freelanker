@@ -268,13 +268,25 @@ User notification queue.
 
 ---
 
+### 3.16 `public_freelancer_profiles` (View)
+Safe public discovery projection for the freelancer marketplace.
+- **`id`** (`UUID`): Freelancer profile identifier.
+- **`display_name`**, **`headline`**, **`bio`**, **`avatar_url`** (`TEXT`).
+- **`skills`**, **`portfolio_links`** (`TEXT[]`).
+- **`is_available`** (`BOOLEAN`).
+- **`created_at`** (`TIMESTAMPTZ`).
+- **Security Properties:** `WITH (security_barrier = true)` prevents side-channel optimizer leakage; `security_invoker = false` (definer mode) ensures discovery across all available freelancers without getting blocked by `profiles` RLS; `is_admin` is omitted. SELECT granted to both `authenticated` and `anon`.
+
+---
+
 ## 4. Integrity Triggers
 
-1. **`trg_on_auth_user_created`**: When a user registers in `auth.users`, a default `profiles` row is automatically created.
+1. **`trg_on_auth_user_created`**: When a user registers in `auth.users`, a default `profiles` row is automatically created with resilient `display_name` fallback (`Freelanker User`).
 2. **`trg_task_milestone_same_project`**: Blocks adding a task to a milestone belonging to a different project.
 3. **`trg_deliverable_integrity`**: Blocks linking a deliverable to a foreign milestone or foreign parent deliverable; automatically increments revision version.
 4. **`trg_agreement_approval_member_check`**: Ensures the approving user is a member of the project with the specified role.
 5. **`trg_dispute_member_check`**: Asserts both dispute participants are verified project members.
-6. **`trg_agreement_immutable_after_activation`**: Blocks any modifications to terms or snapshots of an active agreement.
+6. **`trg_agreement_immutable_after_activation`**: Blocks any modifications to all agreed terms (scope, deliverables, criteria, dates, amounts, snapshots) once an agreement is activated.
 7. **`trg_set_review_deadline`**: Computes `review_deadline` using the project's `review_period_days`.
-8. **`trg_set_updated_at`**: Automatically touches `updated_at` on updates across all core entities.
+8. **`trg_set_updated_at`**: Automatically touches `updated_at` on updates across all core entities. All trigger functions execute with `SET search_path = public, pg_temp`.
+

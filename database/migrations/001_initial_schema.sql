@@ -362,7 +362,12 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 -- 3. VIEWS
 -- =============================================================================
 
-CREATE OR REPLACE VIEW public.public_freelancer_profiles AS
+-- Safe marketplace projection:
+-- - Exposes non-sensitive public discovery fields only (is_admin excluded)
+-- - security_barrier = true prevents optimizer leakage through user-defined functions
+-- - security_invoker is false (definer default) so discovery is not blocked by profiles RLS
+CREATE OR REPLACE VIEW public.public_freelancer_profiles
+WITH (security_barrier = true) AS
 SELECT
     id,
     display_name,
@@ -436,6 +441,7 @@ GRANT EXECUTE ON FUNCTION public.is_platform_admin(UUID) TO authenticated;
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     NEW.updated_at = now();
@@ -454,7 +460,12 @@ BEGIN
     INSERT INTO public.profiles (id, display_name, avatar_url)
     VALUES (
         NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+        COALESCE(
+            NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
+            NULLIF(NEW.raw_user_meta_data->>'name', ''),
+            NULLIF(split_part(NEW.email, '@', 1), ''),
+            'Freelanker User'
+        ),
         NEW.raw_user_meta_data->>'avatar_url'
     )
     ON CONFLICT (id) DO NOTHING;
@@ -471,6 +482,7 @@ CREATE TRIGGER trg_on_auth_user_created
 CREATE OR REPLACE FUNCTION public.validate_task_milestone_project()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_milestone_project_id UUID;
@@ -497,6 +509,7 @@ CREATE TRIGGER trg_task_milestone_same_project
 CREATE OR REPLACE FUNCTION public.validate_deliverable_integrity()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_milestone_project_id UUID;
@@ -542,6 +555,7 @@ CREATE TRIGGER trg_deliverable_integrity
 CREATE OR REPLACE FUNCTION public.validate_agreement_approval_member()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_project_id UUID;
@@ -580,6 +594,7 @@ CREATE TRIGGER trg_agreement_approval_member_check
 CREATE OR REPLACE FUNCTION public.validate_dispute_members()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     IF NOT public.is_project_member(NEW.project_id, NEW.raised_by) THEN
@@ -599,10 +614,11 @@ CREATE TRIGGER trg_dispute_member_check
     BEFORE INSERT ON public.disputes
     FOR EACH ROW EXECUTE FUNCTION public.validate_dispute_members();
 
--- Immutability of activated agreements
+-- Immutability of activated agreements (all agreed terms protected)
 CREATE OR REPLACE FUNCTION public.prevent_activated_agreement_mutation()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 BEGIN
     IF OLD.activated_at IS NOT NULL THEN
@@ -611,6 +627,15 @@ BEGIN
            NEW.currency IS DISTINCT FROM OLD.currency OR
            NEW.version_number IS DISTINCT FROM OLD.version_number OR
            NEW.payment_arrangement IS DISTINCT FROM OLD.payment_arrangement OR
+           NEW.title IS DISTINCT FROM OLD.title OR
+           NEW.scope_of_work IS DISTINCT FROM OLD.scope_of_work OR
+           NEW.deliverables_text IS DISTINCT FROM OLD.deliverables_text OR
+           NEW.acceptance_criteria IS DISTINCT FROM OLD.acceptance_criteria OR
+           NEW.additional_terms IS DISTINCT FROM OLD.additional_terms OR
+           NEW.revision_limit IS DISTINCT FROM OLD.revision_limit OR
+           NEW.review_period_days IS DISTINCT FROM OLD.review_period_days OR
+           NEW.start_date IS DISTINCT FROM OLD.start_date OR
+           NEW.end_date IS DISTINCT FROM OLD.end_date OR
            NEW.client_approved_at IS DISTINCT FROM OLD.client_approved_at OR
            NEW.freelancer_approved_at IS DISTINCT FROM OLD.freelancer_approved_at THEN
             RAISE EXCEPTION 'Activated agreement terms are immutable. Create a new version for amendments.';
@@ -629,6 +654,7 @@ CREATE TRIGGER trg_agreement_immutable_after_activation
 CREATE OR REPLACE FUNCTION public.calculate_deliverable_review_deadline()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     v_review_days INT;
@@ -715,11 +741,11 @@ GRANT SELECT (id, display_name, headline, bio, avatar_url, skills, portfolio_lin
 GRANT UPDATE (display_name, headline, bio, avatar_url, skills, portfolio_links, is_available)
   ON TABLE public.profiles TO authenticated;
 
--- Allow marketplace view access
-GRANT SELECT ON public.public_freelancer_profiles TO authenticated;
+-- Allow marketplace view access (discovery permitted for guests and logged-in users)
+GRANT SELECT ON public.public_freelancer_profiles TO authenticated, anon;
 
--- Milestones column security: authenticated users can only update work descriptors
-GRANT SELECT, INSERT ON TABLE public.milestones TO authenticated;
+-- Milestones column security: authenticated users can read, but can only update work descriptors directly (creation and financial fields are backend-only)
+GRANT SELECT ON TABLE public.milestones TO authenticated;
 GRANT UPDATE (title, description, order_index, due_date) ON TABLE public.milestones TO authenticated;
 
 -- =============================================================================

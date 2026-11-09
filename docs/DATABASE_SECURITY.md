@@ -83,23 +83,32 @@ GRANT UPDATE (display_name, headline, bio, avatar_url, skills, portfolio_links, 
   ON TABLE public.profiles TO authenticated;
 ```
 
-### 3.2 Marketplace Profile View
-Unauthenticated or authenticated marketplace browsing uses `public_freelancer_profiles`, completely eliminating any exposure of administrative metadata:
+### 3.2 Marketplace Profile View & View Security Behavior
+Unauthenticated guests or authenticated users browsing the freelancer marketplace query `public_freelancer_profiles`, completely eliminating any exposure of administrative metadata (`is_admin` is omitted):
+
 ```sql
-CREATE VIEW public.public_freelancer_profiles AS
+CREATE VIEW public.public_freelancer_profiles
+WITH (security_barrier = true) AS
 SELECT id, display_name, headline, bio, avatar_url, skills, portfolio_links, is_available, created_at
 FROM public.profiles
 WHERE is_available = TRUE;
 
-GRANT SELECT ON public.public_freelancer_profiles TO authenticated;
+GRANT SELECT ON public.public_freelancer_profiles TO authenticated, anon;
 ```
 
+#### Why `security_barrier = true`?
+Without `security_barrier`, the PostgreSQL query planner can push user-supplied WHERE clause functions ahead of the view's `is_available = TRUE` filter, creating potential side-channel leaks. `security_barrier = true` guarantees that the view filter executes strictly before any caller-supplied conditions.
+
+#### Why `security_invoker` must remain `false` (Definer mode)?
+In PostgreSQL 15+, views support `WITH (security_invoker = true)`. However, `public.profiles` has a strict RLS policy: `USING (auth.uid() = id)` allowing users to read only their own row. If `security_invoker = true` were enabled on `public_freelancer_profiles`, callers would only see their own profile, completely breaking marketplace discovery (and anonymous guests would see zero rows). Executing the view in definer mode (`security_invoker = false`) allows safe discovery of all available freelancers while restricting columns to non-sensitive public attributes.
+
 ### 3.3 `milestones` Financial Protection
-Ordinary project members can edit task descriptions and schedules, but cannot modify agreed milestone amounts or status flags via Supabase client:
+Ordinary project members can edit task descriptions and schedules, but cannot create milestones or modify agreed milestone amounts or status flags via Supabase client:
 ```sql
-GRANT SELECT, INSERT ON TABLE public.milestones TO authenticated;
+GRANT SELECT ON TABLE public.milestones TO authenticated;
 GRANT UPDATE (title, description, order_index, due_date) ON TABLE public.milestones TO authenticated;
 -- Note: 'amount' and 'status' columns are NOT in the UPDATE grant list!
+-- Note: 'INSERT' is NOT granted to authenticated users (milestone creation is handled exclusively via backend).
 ```
 
 ---
@@ -169,3 +178,4 @@ GRANT UPDATE (title, description, order_index, due_date) ON TABLE public.milesto
    `payments` and `payment_events` tables reject `DELETE` via `ON DELETE RESTRICT` constraints and lack any `DELETE` RLS policies.
 3. **Activity Logs**:
    `activity_logs` is strictly append-only. Only the service-role can insert log entries; no updates or deletions are allowed.
+
