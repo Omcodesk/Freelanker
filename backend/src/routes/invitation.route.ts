@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
+import { publicRateLimiter } from '../middleware/rateLimiter.js';
 import {
+  handleResolveInvitationByToken,
   handleListInvitations,
   handleAcceptInvitation,
   handleRejectInvitation,
@@ -8,7 +10,15 @@ import {
 
 const router = Router();
 
-// All invitation routes require valid authenticated session
+// ─── Public Routes (Rate-limited, unauthenticated preview) ───────────────────
+// GET /api/invitations/token/:token
+router.get(
+  '/token/:token',
+  publicRateLimiter({ maxRequests: 30, windowMs: 60 * 1000 }),
+  handleResolveInvitationByToken
+);
+
+// ─── Authenticated Routes ────────────────────────────────────────────────────
 router.use(requireAuth);
 
 router.get('/', handleListInvitations);

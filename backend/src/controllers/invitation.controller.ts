@@ -4,9 +4,34 @@ import {
   listUserInvitations,
   acceptInvitation,
   rejectInvitation,
+  resolveInvitationByToken,
   InvitationError,
 } from '../services/invitation.service.js';
 import { successResponse, errorResponse } from '../types/index.js';
+
+/**
+ * Public preview endpoint to resolve an invitation by token.
+ * Sets Cache-Control: no-store and returns safe preview fields.
+ */
+export async function handleResolveInvitationByToken(req: Request, res: Response): Promise<void> {
+  const { token } = req.params;
+  if (!token) {
+    res.status(400).json(errorResponse('Invitation token is required.'));
+    return;
+  }
+
+  // Mandatory security header: Never cache invitation tokens or resolution previews
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  try {
+    const preview = await resolveInvitationByToken(token);
+    res.status(200).json(successResponse({ invitation: preview }));
+  } catch (err: unknown) {
+    handleError(res, err, 'Failed to resolve invitation');
+  }
+}
 
 export async function handleCreateInvitation(req: Request, res: Response): Promise<void> {
   const user = req.user;

@@ -131,6 +131,7 @@ All endpoints below require an authenticated Supabase user session (`Authorizati
 | `PATCH`| `/api/projects/:id` | Update editable project fields | Project members only (pre-agreement states) |
 | `POST` | `/api/projects/:id/cancel` | Cancel an active project | Project members only (non-terminal states) |
 | `POST` | `/api/projects/:id/invitations` | Invite collaborator by email | Project members only; unoccupied role only |
+| `GET` | `/api/invitations/token/:token` | Resolve invitation preview by token | Public (rate-limited, unauthenticated preview) |
 | `GET` | `/api/invitations` | List invitations received by current user | Authenticated user matching recipient email/ID |
 | `POST` | `/api/invitations/:id/accept` | Accept project invitation | Verified recipient email matching invitation |
 | `POST` | `/api/invitations/:id/reject` | Reject project invitation | Recipient matching invitation |
@@ -334,6 +335,43 @@ Invites a collaborator by email. Role is assigned automatically to the unoccupie
 - `400 Bad Request`: Self-invitation, invalid email, or project in invalid state.
 - `403 Forbidden`: Requester is not a member of the project.
 - `409 Conflict`: Role already occupied, competing pending invitation already active, or user already a project member.
+
+---
+
+### `GET /api/invitations/token/:token`
+Public preview endpoint to resolve an invitation by token without authentication. Rate-limited (30 req/min per IP) and sets `Cache-Control: no-store`. Returns masked recipient email and does not return the raw token.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "invitation": {
+      "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
+      "projectId": "e4f8d22c-a07e-40e9-b5bf-7da2665e317c",
+      "projectTitle": "Fintech Mobile App Redesign",
+      "projectDescription": "Redesign UX/UI and mobile onboarding flow",
+      "projectStatus": "invitation_pending",
+      "currency": "USD",
+      "totalBudget": 5000,
+      "role": "freelancer",
+      "status": "pending",
+      "maskedEmail": "d***v@example.com",
+      "expiresAt": "2026-11-17T16:30:00.000Z",
+      "isExpired": false,
+      "inviter": {
+        "displayName": "Jane Doe",
+        "avatarUrl": null
+      }
+    }
+  }
+}
+```
+
+**Errors:**
+- `400 Bad Request`: Token format is not a valid UUID.
+- `404 Not Found`: Invitation not found or invalid token.
+- `429 Too Many Requests`: Rate limit exceeded.
 
 ---
 

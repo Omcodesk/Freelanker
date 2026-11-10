@@ -143,6 +143,16 @@ export interface CreateInvitationDTO {
   message?: string;
 }
 
+export interface InvitationResponse {
+  invitation: Invitation;
+  invitationLink: string;
+  delivery: {
+    method: 'link';
+    status: 'ready';
+    recipientEmail: string;
+  };
+}
+
 export interface InvitationDetail extends Invitation {
   invitationLink?: string;
   project?: {
@@ -156,6 +166,25 @@ export interface InvitationDetail extends Invitation {
     displayName: string;
     avatarUrl?: string;
   } | null;
+}
+
+export interface InvitationPreview {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  projectDescription?: string;
+  projectStatus: ProjectStatus;
+  currency: string;
+  totalBudget?: number;
+  role: 'client' | 'freelancer';
+  status: InvitationStatus;
+  maskedEmail: string;
+  expiresAt: string;
+  isExpired: boolean;
+  inviter: {
+    displayName: string;
+    avatarUrl?: string;
+  };
 }
 
 // ─── Agreement & Approvals (ContractFlow) ──────────────────────────────────────

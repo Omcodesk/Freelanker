@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useAuth } from '../../features/auth/AuthContext.tsx';
 import { AuthModal } from '../../features/auth/AuthModal.tsx';
+import { useRouter } from '../../lib/router.tsx';
 
 interface AppShellProps {
   children: ReactNode;
@@ -8,6 +9,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const { user, profile, loading, signOut, isConfigured } = useAuth();
+  const { navigate } = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'login' | 'signup'>('login');
 
@@ -23,12 +25,15 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-surface-secondary flex flex-col">
       {/* Top navigation bar */}
       <header className="bg-white border-b border-slate-200 h-14 flex items-center px-6 shrink-0 justify-between">
-        <div className="flex items-center gap-3">
+        <div
+          onClick={() => navigate('/')}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
           {/* Logo mark */}
-          <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center shadow-sm">
+          <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center shadow-sm group-hover:bg-brand-700 transition-colors">
             <span className="text-white text-xs font-bold">F</span>
           </div>
-          <span className="font-semibold text-slate-900 text-sm tracking-tight">
+          <span className="font-semibold text-slate-900 text-sm tracking-tight group-hover:text-brand-600 transition-colors">
             Freelanker
           </span>
           <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded border border-slate-200">

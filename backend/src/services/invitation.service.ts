@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { env } from '../config/env.js';
 import { logActivity } from './activity.service.js';
-import type { Invitation } from '../types/index.js';
+import type { Invitation, InvitationPreview } from '../types/index.js';
 
 export interface CreateInvitationInput {
   email: string;
@@ -553,6 +553,92 @@ export async function rejectInvitation(
   return {
     success: true,
     projectId: inv.project_id,
+  };
+}
+
+/**
+ * Masks an email address for privacy in public previews (e.g. j***e@domain.com).
+ */
+export function maskEmail(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return email;
+  const local = parts[0];
+  const domain = parts[1];
+
+  if (local.length <= 2) {
+    return `${local[0]}*@${domain}`;
+  }
+  return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolves an invitation token to safe public preview fields.
+ * Validates UUID format and never returns the raw token in the body.
+ */
+export async function resolveInvitationByToken(token: string): Promise<InvitationPreview> {
+  const trimmed = token?.trim();
+  if (!trimmed || !UUID_REGEX.test(trimmed)) {
+    throw new InvitationError(400, 'Invalid invitation token format. Must be a valid UUID.');
+  }
+
+  const { data: inv, error } = await supabaseAdmin
+    .from('invitations')
+    .select(`
+      id,
+      project_id,
+      invited_by,
+      invited_email,
+      role,
+      status,
+      expires_at,
+      created_at,
+      projects:project_id (
+        id,
+        title,
+        description,
+        status,
+        currency,
+        total_budget
+      ),
+      inviter_profile:invited_by (
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq('token', trimmed)
+    .maybeSingle();
+
+  if (error || !inv) {
+    throw new InvitationError(404, 'Invitation not found or invalid token.');
+  }
+
+  const isExpired = new Date(inv.expires_at) <= new Date();
+  const effectiveStatus = isExpired && inv.status === 'pending' ? 'expired' : inv.status;
+
+  const projectData = Array.isArray(inv.projects) ? inv.projects[0] : inv.projects;
+  const inviterData = Array.isArray(inv.inviter_profile) ? inv.inviter_profile[0] : inv.inviter_profile;
+
+  return {
+    id: inv.id,
+    projectId: inv.project_id,
+    projectTitle: projectData?.title || 'Untitled Project',
+    projectDescription: projectData?.description || undefined,
+    projectStatus: projectData?.status || 'draft',
+    currency: projectData?.currency || 'USD',
+    totalBudget: projectData?.total_budget !== null && projectData?.total_budget !== undefined
+      ? Number(projectData.total_budget)
+      : undefined,
+    role: inv.role,
+    status: effectiveStatus,
+    maskedEmail: maskEmail(inv.invited_email),
+    expiresAt: inv.expires_at,
+    isExpired,
+    inviter: {
+      displayName: inviterData?.display_name || 'Project Initiator',
+      avatarUrl: inviterData?.avatar_url || undefined,
+    },
   };
 }
 
