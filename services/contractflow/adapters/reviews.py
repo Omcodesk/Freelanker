@@ -15,7 +15,7 @@ from ..v4.errors import ReviewVerificationError
 from ..v4.review import ReviewVerifier
 from ..v4.schemas import VerifiedReview
 from ..v5.schemas import ApprovalSubject
-from .db import get_connection
+from .db import _current_conn, get_connection
 
 
 class PostgresReviewRepository(AmendmentReviews, ReviewVerifier):
@@ -120,32 +120,49 @@ class PostgresReviewRepository(AmendmentReviews, ReviewVerifier):
         reviewer_id: str,
     ) -> None:
         """
-        Revoke an active review grant under exclusive row lock.
+        Revoke an active review grant under exclusive row lock in an explicit transaction.
         Serializes against concurrent decision transactions.
+        Fails closed on missing or already-revoked reviews.
         """
         import uuid
-        async for conn in get_connection():
-            row = await conn.fetchrow(
+        rev_uuid = uuid.UUID(review_id)
+        now_utc = datetime.now(timezone.utc)
+
+        async def _do_revoke(c):
+            # 1. Acquire exclusive row-level lock on the review grant
+            row = await c.fetchrow(
                 """
-                SELECT review_id FROM public.cf_reviews
-                WHERE review_id = $1::uuid
+                SELECT review_id, revoked FROM public.cf_reviews
+                WHERE review_id = $1
                 FOR UPDATE
                 """,
-                uuid.UUID(review_id),
+                rev_uuid,
             )
-            if not row:
+            if not row or row["revoked"]:
                 raise IntegrationError("REVIEW_INVALID")
 
-            await conn.execute(
+            # 2. Update status to revoked
+            await c.execute(
                 """
                 UPDATE public.cf_reviews
                 SET revoked = TRUE,
                     revoked_at = $1,
                     revocation_reason = $2
-                WHERE review_id = $3::uuid
+                WHERE review_id = $3
                 """,
-                datetime.now(timezone.utc),
+                now_utc,
                 reason,
-                uuid.UUID(review_id),
+                rev_uuid,
             )
+
+        # If already in a managed transaction context (_current_conn), execute directly
+        active = _current_conn.get()
+        if active is not None:
+            await _do_revoke(active)
+            return
+
+        # Standalone invocation: manage an explicit transaction block to hold lock until commit
+        async for conn in get_connection():
+            async with conn.transaction():
+                await _do_revoke(conn)
 

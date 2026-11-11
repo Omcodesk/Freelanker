@@ -45,6 +45,7 @@ def create_test_jwt(
     user_id: str,
     secret: str = TEST_SECRET,
     aud: str = "authenticated",
+    iss: str | None = "https://test.supabase.co/auth/v1",
     exp_offset_seconds: int = 3600,
     email_verified: bool = True,
 ) -> str:
@@ -58,6 +59,8 @@ def create_test_jwt(
         "email_confirmed_at": datetime.now(timezone.utc).isoformat() if email_verified else None,
         "app_metadata": {"provider": "email", "email_verified": email_verified},
     }
+    if iss is not None:
+        payload["iss"] = iss
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -139,6 +142,7 @@ def test_auth_rejects_caller_controlled_user_metadata_email_verified():
         payload = {
             "sub": user_id,
             "aud": "authenticated",
+            "iss": "https://test.supabase.co/auth/v1",
             "exp": now + 3600,
             "iat": now,
             "email": "attacker@example.com",
@@ -152,6 +156,49 @@ def test_auth_rejects_caller_controlled_user_metadata_email_verified():
             with pytest.raises(IntegrationError) as exc:
                 await adapter.authenticate(token)
             assert exc.value.code == "FORBIDDEN"
+
+    asyncio.run(run())
+
+
+def test_auth_valid_issuer():
+    """Security test: Tokens with valid mandatory issuer succeed."""
+    async def run():
+        adapter = SupabasePostgresAuth(supabase_url="https://valid.supabase.co", jwt_secret=TEST_SECRET)
+        user_id = str(uuid.uuid4())
+        token = create_test_jwt(user_id=user_id, iss="https://valid.supabase.co/auth/v1")
+
+        principal = await adapter.authenticate(token)
+        assert principal.user_id == user_id
+        assert principal.boundary == "CONTRACTFLOW-V6-SHARED-IDENTITY"
+
+    asyncio.run(run())
+
+
+def test_auth_missing_issuer():
+    """Security test: Tokens missing mandatory iss claim must be rejected."""
+    async def run():
+        adapter = SupabasePostgresAuth(supabase_url="https://valid.supabase.co", jwt_secret=TEST_SECRET)
+        user_id = str(uuid.uuid4())
+        # Omit iss completely
+        token = create_test_jwt(user_id=user_id, iss=None)
+
+        with pytest.raises(IntegrationError) as exc:
+            await adapter.authenticate(token)
+        assert exc.value.code == "UNAUTHENTICATED"
+
+    asyncio.run(run())
+
+
+def test_auth_empty_issuer():
+    """Security test: Tokens with empty or whitespace iss claim must be rejected."""
+    async def run():
+        adapter = SupabasePostgresAuth(supabase_url="https://valid.supabase.co", jwt_secret=TEST_SECRET)
+        user_id = str(uuid.uuid4())
+        token = create_test_jwt(user_id=user_id, iss="   ")
+
+        with pytest.raises(IntegrationError) as exc:
+            await adapter.authenticate(token)
+        assert exc.value.code == "UNAUTHENTICATED"
 
     asyncio.run(run())
 
@@ -411,13 +458,23 @@ def test_transact_acquires_row_lock():
     asyncio.run(run())
 
 
+def _mock_tx():
+    mock_tx = MagicMock()
+    mock_tx.__aenter__ = AsyncMock(return_value=mock_tx)
+    mock_tx.__aexit__ = AsyncMock(return_value=None)
+    return mock_tx
+
+
 def test_review_revoke_acquires_exclusive_lock():
     """Concurrency test: Revoking a review grant must acquire FOR UPDATE to serialize with approvals."""
     async def run():
         review_adapter = PostgresReviewRepository()
         review_id = str(uuid.uuid4())
         mock_conn = AsyncMock()
-        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id)}
+        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id), "revoked": False}
+
+        mock_tx = _mock_tx()
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
 
         with patch("services.contractflow.adapters.reviews.get_connection") as mock_get_conn:
             async def _generator():
@@ -434,31 +491,112 @@ def test_review_revoke_acquires_exclusive_lock():
     asyncio.run(run())
 
 
-def test_transact_revalidates_review_under_lock():
-    """Concurrency test: transact must verify cf_reviews under FOR SHARE to prevent race with revocation."""
+def test_review_revoke_standalone_transaction():
+    """Security test: Standalone revocation manages its own explicit transaction context."""
     async def run():
-        repo = PostgresApprovalRepository()
-        amendment_id = uuid.uuid4()
-        revision = 1
-
+        review_adapter = PostgresReviewRepository()
+        review_id = str(uuid.uuid4())
         mock_conn = AsyncMock()
-        # 1. cf_approval_heads
-        # 2. cf_approval_versions
-        # 3. cf_artifacts (mock valid record)
-        # 4. cf_reviews re-verification returns None (revoked) -> IntegrityError
-        from services.contractflow.v5.errors import IntegrityError
+        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id), "revoked": False}
 
-        mock_conn.fetchrow.side_effect = [
-            {"current_revision": revision},  # cf_approval_heads
-            None,  # triggers NotFound in _load_record
-        ]
+        mock_tx = _mock_tx()
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
 
-        with patch("services.contractflow.adapters.approvals.get_connection") as mock_get_conn:
+        with patch("services.contractflow.adapters.reviews.get_connection") as mock_get_conn:
             async def _generator():
                 yield mock_conn
             mock_get_conn.return_value = _generator()
 
-            with pytest.raises(NotFound):
-                await repo.transact(amendment_id, lambda r: r)
+            await review_adapter.revoke(review_id, reason="Legal terms changed", reviewer_id=str(uuid.uuid4()))
+
+            # Verify transaction block was explicitly entered and exited
+            assert mock_conn.transaction.called
+            assert mock_tx.__aenter__.called
+            assert mock_tx.__aexit__.called
+
+    asyncio.run(run())
+
+
+def test_review_revoke_repeated_rejection():
+    """Security test: Revoking an already revoked review must fail closed with REVIEW_INVALID."""
+    async def run():
+        review_adapter = PostgresReviewRepository()
+        review_id = str(uuid.uuid4())
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id), "revoked": True}
+
+        mock_tx = _mock_tx()
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
+
+        with patch("services.contractflow.adapters.reviews.get_connection") as mock_get_conn:
+            async def _generator():
+                yield mock_conn
+            mock_get_conn.return_value = _generator()
+
+            with pytest.raises(IntegrationError) as exc:
+                await review_adapter.revoke(review_id, reason="Already revoked", reviewer_id=str(uuid.uuid4()))
+            assert exc.value.code == "REVIEW_INVALID"
+
+    asyncio.run(run())
+
+
+def test_review_revoke_rollback_on_error():
+    """Security test: Revocation failure propagates and cleans up transaction."""
+    async def run():
+        review_adapter = PostgresReviewRepository()
+        review_id = str(uuid.uuid4())
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id), "revoked": False}
+        mock_conn.execute.side_effect = RuntimeError("Database connection lost during update")
+
+        mock_tx = _mock_tx()
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
+
+        with patch("services.contractflow.adapters.reviews.get_connection") as mock_get_conn:
+            async def _generator():
+                yield mock_conn
+            mock_get_conn.return_value = _generator()
+
+            with pytest.raises(RuntimeError):
+                await review_adapter.revoke(review_id, reason="Database failure", reviewer_id=str(uuid.uuid4()))
+
+            assert mock_tx.__aexit__.called
+
+    asyncio.run(run())
+
+
+def test_approval_transact_fails_when_review_revoked():
+    """Concurrency test: Transact re-verifies review grant under FOR SHARE and fails if revoked."""
+    async def run():
+        from services.contractflow.v5.errors import IntegrityError
+
+        repo = PostgresApprovalRepository()
+        amendment_id = uuid.uuid4()
+        revision = 1
+
+        mock_record = MagicMock()
+        mock_record.subject.content_digest = "c" * 64
+
+        mock_conn = AsyncMock()
+        # 1. cf_approval_heads
+        # 2. cf_reviews returns None (revoked or expired grant)
+        mock_conn.fetchrow.side_effect = [
+            {"current_revision": revision},  # cf_approval_heads
+            None,  # cf_reviews re-verification under FOR SHARE returns None
+        ]
+
+        with patch.object(repo, "_load_record", new=AsyncMock(return_value=mock_record)):
+            with patch("services.contractflow.adapters.approvals.get_connection") as mock_get_conn:
+                async def _generator():
+                    yield mock_conn
+                mock_get_conn.return_value = _generator()
+
+                with pytest.raises(IntegrityError) as exc:
+                    await repo.transact(amendment_id, lambda r: r)
+                assert "revoked" in str(exc.value)
+
+                # Verify FOR SHARE query was executed
+                review_check_sql = mock_conn.fetchrow.call_args_list[1][0][0]
+                assert "FOR SHARE" in review_check_sql
 
     asyncio.run(run())

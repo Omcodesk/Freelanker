@@ -41,7 +41,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS trg_increment_project_source_version ON public.projects;
 CREATE TRIGGER trg_increment_project_source_version
@@ -50,6 +50,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.increment_project_source_version();
 
 -- Function to increment project source_version when project milestones change
+-- SECURITY DEFINER allows project version bump under row-level security
 CREATE OR REPLACE FUNCTION public.increment_project_source_on_milestone_change()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -81,7 +82,10 @@ BEGIN
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION public.increment_project_source_on_milestone_change() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.increment_project_source_on_milestone_change() TO authenticated, service_role;
 
 DROP TRIGGER IF EXISTS trg_increment_project_source_on_milestone ON public.milestones;
 CREATE TRIGGER trg_increment_project_source_on_milestone
@@ -90,6 +94,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.increment_project_source_on_milestone_change();
 
 -- Function to increment project source_version when base agreement changes
+-- SECURITY DEFINER allows project version bump under row-level security
 CREATE OR REPLACE FUNCTION public.increment_project_source_on_agreement_change()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -103,7 +108,10 @@ BEGIN
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION public.increment_project_source_on_agreement_change() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.increment_project_source_on_agreement_change() TO authenticated, service_role;
 
 DROP TRIGGER IF EXISTS trg_increment_project_source_on_agreement ON public.agreements;
 CREATE TRIGGER trg_increment_project_source_on_agreement
@@ -347,6 +355,39 @@ BEFORE UPDATE OR DELETE ON public.cf_decisions
 FOR EACH ROW
 EXECUTE FUNCTION public.prevent_cf_decisions_mutation();
 
+-- Function to prevent modification of immutable cf_approval_versions fields or deletion
+CREATE OR REPLACE FUNCTION public.prevent_cf_approval_versions_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'Integrity violation: cf_approval_versions records are permanent and cannot be deleted.'
+            USING ERRCODE = 'integrity_constraint_violation';
+    END IF;
+
+    -- On UPDATE: only state column is allowed to change during lifecycle transitions
+    IF (OLD.amendment_id IS DISTINCT FROM NEW.amendment_id OR
+        OLD.revision IS DISTINCT FROM NEW.revision OR
+        OLD.content_digest IS DISTINCT FROM NEW.content_digest OR
+        OLD.original_agreement_id IS DISTINCT FROM NEW.original_agreement_id OR
+        OLD.original_agreement_version IS DISTINCT FROM NEW.original_agreement_version OR
+        OLD.client_id IS DISTINCT FROM NEW.client_id OR
+        OLD.freelancer_id IS DISTINCT FROM NEW.freelancer_id OR
+        OLD.review_reference IS DISTINCT FROM NEW.review_reference OR
+        OLD.created_at IS DISTINCT FROM NEW.created_at) THEN
+        RAISE EXCEPTION 'Integrity violation: cf_approval_versions identity, revision, and digest are immutable. Only state transitions are permitted.'
+            USING ERRCODE = 'integrity_constraint_violation';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_cf_approval_versions_no_tampering ON public.cf_approval_versions;
+CREATE TRIGGER trg_cf_approval_versions_no_tampering
+BEFORE UPDATE OR DELETE ON public.cf_approval_versions
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_cf_approval_versions_tampering();
+
 
 -- ============================================================================
 -- 10. DATABASE PRIVILEGES (Least-Privilege Model)
@@ -362,16 +403,22 @@ GRANT SELECT ON public.cf_artifacts, public.cf_approval_heads, public.cf_approva
                 public.cf_decisions, public.cf_audit, public.cf_reviews,
                 public.cf_assessment_reviews TO authenticated;
 
--- Hard revoke of UPDATE and DELETE on immutable tables for authenticated and service_role
+-- Hard revoke of UPDATE and DELETE on strictly immutable tables for authenticated and service_role
 REVOKE UPDATE, DELETE ON public.cf_artifacts FROM authenticated, service_role;
 REVOKE UPDATE, DELETE ON public.cf_decisions FROM authenticated, service_role;
 REVOKE UPDATE, DELETE ON public.cf_audit FROM authenticated, service_role;
-REVOKE UPDATE, DELETE ON public.cf_approval_versions FROM authenticated, service_role;
+
+-- Version record protections: prevent DELETE entirely; table-level revoke of UPDATE
+REVOKE DELETE ON public.cf_approval_versions FROM authenticated, service_role;
+REVOKE UPDATE ON public.cf_approval_versions FROM authenticated, service_role;
 
 -- Service role permissions for backend operations
 GRANT SELECT, INSERT ON public.cf_artifacts, public.cf_approval_versions,
                         public.cf_decisions, public.cf_audit, public.cf_reviews,
                         public.cf_assessment_reviews TO service_role;
+
+-- Grant column-level UPDATE on lifecycle state column ONLY (preserves immutable fields)
+GRANT UPDATE (state) ON public.cf_approval_versions TO service_role;
 
 GRANT SELECT, INSERT, UPDATE ON public.cf_approval_heads TO service_role;
 GRANT SELECT, UPDATE ON public.cf_reviews TO service_role;
@@ -400,14 +447,17 @@ GRANT SELECT, INSERT ON public.cf_artifacts, public.cf_approval_versions,
                         public.cf_decisions, public.cf_audit, public.cf_reviews,
                         public.cf_assessment_reviews TO contractflow_app;
 
+-- Grant column-level UPDATE on lifecycle state column ONLY for application role
+GRANT UPDATE (state) ON public.cf_approval_versions TO contractflow_app;
+
 GRANT SELECT, INSERT, UPDATE ON public.cf_approval_heads TO contractflow_app;
 GRANT SELECT, UPDATE ON public.cf_reviews TO contractflow_app;
 GRANT SELECT, UPDATE ON public.cf_assessment_reviews TO contractflow_app;
 GRANT USAGE, SELECT ON SEQUENCE public.cf_audit_append_sequence_seq TO contractflow_app;
 
 -- Strict immutability: deny UPDATE and DELETE on immutable tables for runtime role
-REVOKE UPDATE, DELETE ON public.cf_artifacts, public.cf_decisions,
-                        public.cf_audit, public.cf_approval_versions FROM contractflow_app;
+REVOKE UPDATE, DELETE ON public.cf_artifacts, public.cf_decisions, public.cf_audit FROM contractflow_app;
+REVOKE DELETE ON public.cf_approval_versions FROM contractflow_app;
 
 
 -- ============================================================================

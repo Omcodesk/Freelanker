@@ -59,7 +59,13 @@ class SupabasePostgresAuth(SharedAuth):
         if aud != "authenticated":
             raise IntegrationError("UNAUTHENTICATED")
 
-        # 3. Email verification requirement (Authoritative Server Claims Only)
+        # 3. Mandatory Issuer verification (exact match with {SUPABASE_URL}/auth/v1)
+        expected_issuer = f"{self.supabase_url}/auth/v1" if self.supabase_url else None
+        iss = payload.get("iss")
+        if not expected_issuer or not iss or not isinstance(iss, str) or iss.strip() != expected_issuer:
+            raise IntegrationError("UNAUTHENTICATED")
+
+        # 4. Email verification requirement (Authoritative Server Claims Only)
         # NEVER trust caller-writable user_metadata.email_verified
         app_metadata = payload.get("app_metadata", {})
         is_verified = bool(
@@ -75,8 +81,14 @@ class SupabasePostgresAuth(SharedAuth):
         return Principal(user_id=str(sub), boundary=self.boundary_reference)
 
     async def _verify_jwt(self, token: str) -> dict[str, Any] | None:
-        """Verify JWT signature, standard claims, and issuer if present."""
-        expected_issuer = f"{self.supabase_url}/auth/v1" if self.supabase_url else None
+        """
+        Verify JWT signature, standard claims, and mandatory issuer.
+        Requires exact match with {SUPABASE_URL}/auth/v1.
+        """
+        if not self.supabase_url:
+            return None
+
+        expected_issuer = f"{self.supabase_url}/auth/v1"
 
         # Fast path: Local secret verification (HS256)
         if self.jwt_secret:
@@ -86,11 +98,12 @@ class SupabasePostgresAuth(SharedAuth):
                     self.jwt_secret,
                     algorithms=["HS256"],
                     audience="authenticated",
+                    issuer=expected_issuer,
                     leeway=60,  # 60s clock skew
-                    options={"require": ["exp", "sub", "aud"]},
+                    options={"require": ["exp", "sub", "aud", "iss"]},
                 )
-                # If issuer is present, it must strictly match the authoritative Supabase Auth endpoint
-                if expected_issuer and "iss" in decoded and decoded["iss"] != expected_issuer:
+                iss = decoded.get("iss")
+                if not iss or not isinstance(iss, str) or iss.strip() != expected_issuer:
                     return None
                 return decoded
             except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
@@ -99,6 +112,15 @@ class SupabasePostgresAuth(SharedAuth):
         # Remote path: Verify with authoritative Supabase Auth endpoint
         if self.supabase_url:
             try:
+                # First check unverified claims to ensure iss is present and valid
+                try:
+                    unverified = jwt.decode(token, options={"verify_signature": False})
+                    unverified_iss = unverified.get("iss")
+                    if not unverified_iss or not isinstance(unverified_iss, str) or unverified_iss.strip() != expected_issuer:
+                        return None
+                except Exception:
+                    return None
+
                 headers = {
                     "Authorization": f"Bearer {token}",
                     "apikey": os.environ.get("SUPABASE_ANON_KEY", ""),
@@ -112,6 +134,7 @@ class SupabasePostgresAuth(SharedAuth):
                             return {
                                 "sub": user_id,
                                 "aud": data.get("aud", "authenticated"),
+                                "iss": expected_issuer,
                                 "email_confirmed_at": data.get("email_confirmed_at"),
                                 "app_metadata": data.get("app_metadata", {}),
                             }
