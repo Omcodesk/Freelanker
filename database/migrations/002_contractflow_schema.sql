@@ -429,3 +429,4 @@ CREATE POLICY "Project members and reviewer can read cf_assessment_reviews"
             AND pm.user_id = auth.uid()
         )
     );
+

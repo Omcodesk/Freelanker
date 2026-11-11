@@ -6,6 +6,7 @@ import healthRouter from './routes/health.route.js';
 import authRouter from './routes/auth.route.js';
 import projectRouter from './routes/project.route.js';
 import invitationRouter from './routes/invitation.route.js';
+import contractflowRouter from './routes/contractflow.route.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -32,9 +33,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/invitations', invitationRouter);
-
-// Person 2: ContractFlow router will be mounted here on merge
-// app.use('/api/contractflow', contractflowRouter);
+app.use('/api/contractflow', contractflowRouter);
 
 // Person 3: WorkBridge router will be mounted here on merge
 // app.use('/api/workbridge', workbridgeRouter);

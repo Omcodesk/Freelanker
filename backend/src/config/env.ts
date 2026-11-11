@@ -31,6 +31,9 @@ export const env = {
   PAYPAL_CLIENT_SECRET: optionalEnv('PAYPAL_CLIENT_SECRET', ''),
   PAYPAL_MODE: optionalEnv('PAYPAL_MODE', 'sandbox'),
 
+  // ContractFlow Python/FastAPI microservice endpoint
+  CONTRACTFLOW_SERVICE_URL: optionalEnv('CONTRACTFLOW_SERVICE_URL', 'http://127.0.0.1:8000'),
+
   get isDevelopment(): boolean {
     return this.NODE_ENV === 'development';
   },
