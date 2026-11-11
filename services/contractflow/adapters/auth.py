@@ -59,17 +59,15 @@ class SupabasePostgresAuth(SharedAuth):
         if aud != "authenticated":
             raise IntegrationError("UNAUTHENTICATED")
 
-        # 3. Email verification requirement
-        # Supabase includes email_confirmed_at or app_metadata/user_metadata
+        # 3. Email verification requirement (Authoritative Server Claims Only)
+        # NEVER trust caller-writable user_metadata.email_verified
         app_metadata = payload.get("app_metadata", {})
-        user_metadata = payload.get("user_metadata", {})
         is_verified = bool(
             payload.get("email_confirmed_at")
             or app_metadata.get("email_verified")
-            or user_metadata.get("email_verified")
         )
         if not is_verified:
-            # If not present in token claims, verify via Supabase Auth API
+            # If not verified in token claims, verify via authoritative Supabase Auth API
             is_verified = await self._check_email_verified_remote(bearer_token)
             if not is_verified:
                 raise IntegrationError("FORBIDDEN")
@@ -77,7 +75,9 @@ class SupabasePostgresAuth(SharedAuth):
         return Principal(user_id=str(sub), boundary=self.boundary_reference)
 
     async def _verify_jwt(self, token: str) -> dict[str, Any] | None:
-        """Verify JWT signature and standard claims."""
+        """Verify JWT signature, standard claims, and issuer if present."""
+        expected_issuer = f"{self.supabase_url}/auth/v1" if self.supabase_url else None
+
         # Fast path: Local secret verification (HS256)
         if self.jwt_secret:
             try:
@@ -89,11 +89,14 @@ class SupabasePostgresAuth(SharedAuth):
                     leeway=60,  # 60s clock skew
                     options={"require": ["exp", "sub", "aud"]},
                 )
+                # If issuer is present, it must strictly match the authoritative Supabase Auth endpoint
+                if expected_issuer and "iss" in decoded and decoded["iss"] != expected_issuer:
+                    return None
                 return decoded
             except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
                 pass
 
-        # Remote path: Verify with Supabase Auth endpoint
+        # Remote path: Verify with authoritative Supabase Auth endpoint
         if self.supabase_url:
             try:
                 headers = {
@@ -111,7 +114,6 @@ class SupabasePostgresAuth(SharedAuth):
                                 "aud": data.get("aud", "authenticated"),
                                 "email_confirmed_at": data.get("email_confirmed_at"),
                                 "app_metadata": data.get("app_metadata", {}),
-                                "user_metadata": data.get("user_metadata", {}),
                             }
             except Exception:
                 pass
@@ -178,3 +180,4 @@ class SupabasePostgresAuth(SharedAuth):
                 )
                 if not ag_row or str(ag_row["project_id"]) != project_id:
                     raise IntegrationError("FORBIDDEN")
+

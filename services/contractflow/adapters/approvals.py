@@ -336,7 +336,24 @@ class PostgresApprovalRepository(ApprovalRepository):
 
             current = await self._load_record(conn, amendment_id, current_revision)
 
-            # 2. Execute domain transition logic
+            # 2. Re-validate that review grant remains unrevoked and unexpired under lock
+            # Serializes against concurrent review revocation
+            rev_row = await conn.fetchrow(
+                """
+                SELECT review_id FROM public.cf_reviews
+                WHERE amendment_id = $1 AND revision = $2 AND content_digest = $3
+                  AND revoked = FALSE AND expires_at > now()
+                LIMIT 1
+                FOR SHARE
+                """,
+                amendment_id,
+                current_revision,
+                current.subject.content_digest,
+            )
+            if not rev_row:
+                raise IntegrityError("Review grant is missing, expired, or revoked")
+
+            # 3. Execute domain transition logic
             result = validate_record(operation(current))
 
             if result.subject != current.subject or result.events[: len(current.events)] != current.events:

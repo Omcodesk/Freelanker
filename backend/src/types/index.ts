@@ -8,14 +8,15 @@ export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  code?: string;
 }
 
 export function successResponse<T>(data: T): ApiResponse<T> {
   return { success: true, data };
 }
 
-export function errorResponse(message: string): ApiResponse<never> {
-  return { success: false, error: message };
+export function errorResponse(message: string, code?: string): ApiResponse<never> {
+  return { success: false, error: message, ...(code ? { code } : {}) };
 }
 
 // ─── User & Roles ─────────────────────────────────────────────────────────────

@@ -27,7 +27,10 @@ export class ContractFlowProxyService {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
 
-  constructor(baseUrl?: string, timeoutMs = 30000) {
+  constructor(
+    baseUrl?: string,
+    timeoutMs = parseInt(process.env.CONTRACTFLOW_PROXY_TIMEOUT_MS || '45000', 10)
+  ) {
     this.baseUrl = (baseUrl || env.CONTRACTFLOW_SERVICE_URL).replace(/\/+$/, '');
     this.timeoutMs = timeoutMs;
   }
@@ -127,3 +130,4 @@ export class ContractFlowProxyService {
 }
 
 export const contractflowProxy = new ContractFlowProxyService();
+

@@ -27,12 +27,16 @@ ADD COLUMN IF NOT EXISTS source_version INT NOT NULL DEFAULT 1 CHECK (source_ver
 CREATE OR REPLACE FUNCTION public.increment_project_source_version()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Substantive edits to project scope, budget, currency, or terms increment source_version
+    -- Substantive edits to project scope, budget, currency, parties, terms, or status increment source_version
     IF (OLD.title IS DISTINCT FROM NEW.title OR
         OLD.description IS DISTINCT FROM NEW.description OR
         OLD.total_budget IS DISTINCT FROM NEW.total_budget OR
         OLD.currency IS DISTINCT FROM NEW.currency OR
-        OLD.payment_arrangement IS DISTINCT FROM NEW.payment_arrangement) THEN
+        OLD.payment_arrangement IS DISTINCT FROM NEW.payment_arrangement OR
+        OLD.client_id IS DISTINCT FROM NEW.client_id OR
+        OLD.freelancer_id IS DISTINCT FROM NEW.freelancer_id OR
+        OLD.review_period_days IS DISTINCT FROM NEW.review_period_days OR
+        OLD.status IS DISTINCT FROM NEW.status) THEN
         NEW.source_version := OLD.source_version + 1;
     END IF;
     RETURN NEW;
@@ -48,17 +52,34 @@ EXECUTE FUNCTION public.increment_project_source_version();
 -- Function to increment project source_version when project milestones change
 CREATE OR REPLACE FUNCTION public.increment_project_source_on_milestone_change()
 RETURNS TRIGGER AS $$
-DECLARE
-    target_project_id UUID;
 BEGIN
-    target_project_id := COALESCE(NEW.project_id, OLD.project_id);
-    IF target_project_id IS NOT NULL THEN
-        UPDATE public.projects
-        SET source_version = source_version + 1,
-            updated_at = now()
-        WHERE id = target_project_id;
+    IF TG_OP = 'UPDATE' AND OLD.project_id IS DISTINCT FROM NEW.project_id THEN
+        -- Milestone reassigned between projects: bump both projects transactionally
+        IF OLD.project_id IS NOT NULL THEN
+            UPDATE public.projects
+            SET source_version = source_version + 1,
+                updated_at = now()
+            WHERE id = OLD.project_id;
+        END IF;
+        IF NEW.project_id IS NOT NULL THEN
+            UPDATE public.projects
+            SET source_version = source_version + 1,
+                updated_at = now()
+            WHERE id = NEW.project_id;
+        END IF;
+    ELSE
+        DECLARE
+            target_project_id UUID := COALESCE(NEW.project_id, OLD.project_id);
+        BEGIN
+            IF target_project_id IS NOT NULL THEN
+                UPDATE public.projects
+                SET source_version = source_version + 1,
+                    updated_at = now()
+                WHERE id = target_project_id;
+            END IF;
+        END;
     END IF;
-    RETURN NEW;
+    RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -67,6 +88,28 @@ CREATE TRIGGER trg_increment_project_source_on_milestone
 AFTER INSERT OR UPDATE OR DELETE ON public.milestones
 FOR EACH ROW
 EXECUTE FUNCTION public.increment_project_source_on_milestone_change();
+
+-- Function to increment project source_version when base agreement changes
+CREATE OR REPLACE FUNCTION public.increment_project_source_on_agreement_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    target_project_id UUID := COALESCE(NEW.project_id, OLD.project_id);
+BEGIN
+    IF target_project_id IS NOT NULL THEN
+        UPDATE public.projects
+        SET source_version = source_version + 1,
+            updated_at = now()
+        WHERE id = target_project_id;
+    END IF;
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_increment_project_source_on_agreement ON public.agreements;
+CREATE TRIGGER trg_increment_project_source_on_agreement
+AFTER INSERT OR UPDATE OR DELETE ON public.agreements
+FOR EACH ROW
+EXECUTE FUNCTION public.increment_project_source_on_agreement_change();
 
 
 -- ============================================================================
@@ -334,6 +377,37 @@ GRANT SELECT, INSERT, UPDATE ON public.cf_approval_heads TO service_role;
 GRANT SELECT, UPDATE ON public.cf_reviews TO service_role;
 GRANT SELECT, UPDATE ON public.cf_assessment_reviews TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.cf_audit_append_sequence_seq TO service_role;
+
+-- ----------------------------------------------------------------------------
+-- Dedicated ContractFlow Application Runtime Role (Non-Superuser Least-Privilege)
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'contractflow_app') THEN
+        CREATE ROLE contractflow_app WITH LOGIN NOINHERIT;
+    END IF;
+END;
+$$;
+
+GRANT USAGE ON SCHEMA public TO contractflow_app;
+
+-- Read-only Core table access for party resolution and monotonic source tracking
+GRANT SELECT ON public.projects, public.project_members, public.profiles,
+                public.agreements, public.milestones TO contractflow_app;
+
+-- Dedicated runtime access to ContractFlow tables
+GRANT SELECT, INSERT ON public.cf_artifacts, public.cf_approval_versions,
+                        public.cf_decisions, public.cf_audit, public.cf_reviews,
+                        public.cf_assessment_reviews TO contractflow_app;
+
+GRANT SELECT, INSERT, UPDATE ON public.cf_approval_heads TO contractflow_app;
+GRANT SELECT, UPDATE ON public.cf_reviews TO contractflow_app;
+GRANT SELECT, UPDATE ON public.cf_assessment_reviews TO contractflow_app;
+GRANT USAGE, SELECT ON SEQUENCE public.cf_audit_append_sequence_seq TO contractflow_app;
+
+-- Strict immutability: deny UPDATE and DELETE on immutable tables for runtime role
+REVOKE UPDATE, DELETE ON public.cf_artifacts, public.cf_decisions,
+                        public.cf_audit, public.cf_approval_versions FROM contractflow_app;
 
 
 -- ============================================================================

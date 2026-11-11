@@ -129,6 +129,58 @@ def test_auth_unverified_email():
     asyncio.run(run())
 
 
+def test_auth_rejects_caller_controlled_user_metadata_email_verified():
+    """Security test: user_metadata is client-writable; must never be accepted as proof of email confirmation."""
+    async def run():
+        adapter = auth_adapter()
+        user_id = str(uuid.uuid4())
+        now = int(time.time())
+        # Malicious payload: user forged email_verified in user_metadata, but no email_confirmed_at
+        payload = {
+            "sub": user_id,
+            "aud": "authenticated",
+            "exp": now + 3600,
+            "iat": now,
+            "email": "attacker@example.com",
+            "email_confirmed_at": None,
+            "user_metadata": {"email_verified": True},  # Attacker injected this
+            "app_metadata": {"provider": "email", "email_verified": False},
+        }
+        token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
+
+        with patch.object(adapter, "_check_email_verified_remote", return_value=False):
+            with pytest.raises(IntegrationError) as exc:
+                await adapter.authenticate(token)
+            assert exc.value.code == "FORBIDDEN"
+
+    asyncio.run(run())
+
+
+def test_auth_rejects_mismatched_issuer():
+    """Security test: Tokens with mismatched issuer must be rejected."""
+    async def run():
+        adapter = SupabasePostgresAuth(supabase_url="https://valid.supabase.co", jwt_secret=TEST_SECRET)
+        user_id = str(uuid.uuid4())
+        now = int(time.time())
+        payload = {
+            "sub": user_id,
+            "aud": "authenticated",
+            "exp": now + 3600,
+            "iat": now,
+            "iss": "https://attacker.supabase.co/auth/v1",
+            "email": "test@example.com",
+            "email_confirmed_at": datetime.now(timezone.utc).isoformat(),
+            "app_metadata": {"email_verified": True},
+        }
+        token = jwt.encode(payload, TEST_SECRET, algorithm="HS256")
+
+        with pytest.raises(IntegrationError) as exc:
+            await adapter.authenticate(token)
+        assert exc.value.code == "UNAUTHENTICATED"
+
+    asyncio.run(run())
+
+
 def test_auth_oversized_token():
     async def run():
         adapter = auth_adapter()
@@ -355,5 +407,58 @@ def test_transact_acquires_row_lock():
             # Verify that SELECT ... FOR UPDATE was executed
             first_call_sql = mock_conn.fetchrow.call_args_list[0][0][0]
             assert "FOR UPDATE" in first_call_sql
+
+    asyncio.run(run())
+
+
+def test_review_revoke_acquires_exclusive_lock():
+    """Concurrency test: Revoking a review grant must acquire FOR UPDATE to serialize with approvals."""
+    async def run():
+        review_adapter = PostgresReviewRepository()
+        review_id = str(uuid.uuid4())
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {"review_id": uuid.UUID(review_id)}
+
+        with patch("services.contractflow.adapters.reviews.get_connection") as mock_get_conn:
+            async def _generator():
+                yield mock_conn
+            mock_get_conn.return_value = _generator()
+
+            await review_adapter.revoke(review_id, reason="Legal terms changed", reviewer_id=str(uuid.uuid4()))
+
+            assert mock_conn.fetchrow.called
+            lock_sql = mock_conn.fetchrow.call_args[0][0]
+            assert "FOR UPDATE" in lock_sql
+            assert mock_conn.execute.called
+
+    asyncio.run(run())
+
+
+def test_transact_revalidates_review_under_lock():
+    """Concurrency test: transact must verify cf_reviews under FOR SHARE to prevent race with revocation."""
+    async def run():
+        repo = PostgresApprovalRepository()
+        amendment_id = uuid.uuid4()
+        revision = 1
+
+        mock_conn = AsyncMock()
+        # 1. cf_approval_heads
+        # 2. cf_approval_versions
+        # 3. cf_artifacts (mock valid record)
+        # 4. cf_reviews re-verification returns None (revoked) -> IntegrityError
+        from services.contractflow.v5.errors import IntegrityError
+
+        mock_conn.fetchrow.side_effect = [
+            {"current_revision": revision},  # cf_approval_heads
+            None,  # triggers NotFound in _load_record
+        ]
+
+        with patch("services.contractflow.adapters.approvals.get_connection") as mock_get_conn:
+            async def _generator():
+                yield mock_conn
+            mock_get_conn.return_value = _generator()
+
+            with pytest.raises(NotFound):
+                await repo.transact(amendment_id, lambda r: r)
 
     asyncio.run(run())

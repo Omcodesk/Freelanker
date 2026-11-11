@@ -37,6 +37,7 @@ class PostgresReviewRepository(AmendmentReviews, ReviewVerifier):
                   AND revoked = FALSE
                 ORDER BY created_at DESC
                 LIMIT 1
+                FOR SHARE
                 """,
                 subject.amendment_id,
                 subject.amendment_version,
@@ -87,6 +88,7 @@ class PostgresReviewRepository(AmendmentReviews, ReviewVerifier):
                 FROM public.cf_assessment_reviews
                 WHERE review_reference = $1 AND revoked = FALSE
                 LIMIT 1
+                FOR SHARE
                 """,
                 review_reference,
             )
@@ -110,3 +112,40 @@ class PostgresReviewRepository(AmendmentReviews, ReviewVerifier):
                 decision="AUTHORIZE_DRAFT_GENERATION",
                 verification_boundary=self.boundary_reference,
             )
+
+    async def revoke(
+        self,
+        review_id: str,
+        reason: str,
+        reviewer_id: str,
+    ) -> None:
+        """
+        Revoke an active review grant under exclusive row lock.
+        Serializes against concurrent decision transactions.
+        """
+        import uuid
+        async for conn in get_connection():
+            row = await conn.fetchrow(
+                """
+                SELECT review_id FROM public.cf_reviews
+                WHERE review_id = $1::uuid
+                FOR UPDATE
+                """,
+                uuid.UUID(review_id),
+            )
+            if not row:
+                raise IntegrationError("REVIEW_INVALID")
+
+            await conn.execute(
+                """
+                UPDATE public.cf_reviews
+                SET revoked = TRUE,
+                    revoked_at = $1,
+                    revocation_reason = $2
+                WHERE review_id = $3::uuid
+                """,
+                datetime.now(timezone.utc),
+                reason,
+                uuid.UUID(review_id),
+            )
+
