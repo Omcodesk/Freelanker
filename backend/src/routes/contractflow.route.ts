@@ -16,6 +16,7 @@ import express, { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { publicRateLimiter } from '../middleware/rateLimiter.js';
 import {
+  handleContractFlowHealth,
   handleGenerateContract,
   handleDraftAgreement,
   handleAssessScope,
@@ -32,6 +33,9 @@ const router = Router();
 router.use(requireAuth);
 router.use(express.json({ limit: '128kb' }));
 router.use(publicRateLimiter({ maxRequests: 60, windowMs: 60 * 1000 }));
+
+// ─── Service Health (Authenticated) ─────────────────────────────────────────
+router.get('/health', handleContractFlowHealth);
 
 // ─── Project Scoped Routes ──────────────────────────────────────────────────
 router.post(['/projects/:id/contracts/generate', '/:id/contracts/generate'], handleGenerateContract);

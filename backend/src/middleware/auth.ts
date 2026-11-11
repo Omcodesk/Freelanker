@@ -54,8 +54,9 @@ export async function requireAuth(
       return;
     }
 
-    // Attach verified user identity from Supabase Auth server
-    const isEmailVerified = Boolean(user.email_confirmed_at || user.user_metadata?.email_verified);
+    // Attach verified user identity from Supabase Auth server.
+    // Never trust caller-writable user_metadata for email verification.
+    const isEmailVerified = Boolean(user.email_confirmed_at);
     req.user = {
       id: user.id,
       email: user.email ?? '',
@@ -99,7 +100,7 @@ export async function optionalAuth(
     } = await supabaseAuth.auth.getUser(token);
 
     if (!error && user) {
-      const isEmailVerified = Boolean(user.email_confirmed_at || user.user_metadata?.email_verified);
+      const isEmailVerified = Boolean(user.email_confirmed_at);
       req.user = {
         id: user.id,
         email: user.email ?? '',

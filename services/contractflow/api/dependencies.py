@@ -12,7 +12,7 @@ bearer = HTTPBearer(auto_error=False)
 def get_runtime(request: Request) -> IntegrationRuntime:
     value = getattr(request.app.state, "contractflow_runtime", None)
     if not isinstance(value, IntegrationRuntime) or any(getattr(value, name) is None for name in (
-            "auth", "workbridge", "artifacts", "approval_repository", "reviews", "assessment_reviews", "transactions", "provider")):
+            "auth", "workbridge", "artifacts", "approval_repository", "reviews", "assessment_reviews", "transactions")):
         raise IntegrationError("UNAVAILABLE")
     return value
 

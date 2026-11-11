@@ -64,7 +64,7 @@ class IntegrationRuntime:
     reviews: AmendmentReviews
     assessment_reviews: ReviewVerifier
     transactions: ApprovalTransactions
-    provider: ContractProvider
+    provider: ContractProvider | None = None
     timeout_seconds: float = 30
 
     def principal(self, context):
@@ -103,6 +103,8 @@ class IntegrationRuntime:
 
     async def generate(self, kind, request, principal):
         source = await self.source(request.project_id, principal, request.expected_source_version)
+        if self.provider is None:
+            raise IntegrationError("UNAVAILABLE")
         if kind == "CONTRACT":
             result = await ContractGenerationService(self.provider, timeout_seconds=self.timeout_seconds).generate_contract(source.project)
         elif kind == "AGREEMENT":

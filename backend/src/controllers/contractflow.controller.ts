@@ -481,3 +481,18 @@ export async function handleGetAmendmentHistory(req: Request, res: Response): Pr
     res.status(result.status).json(errorResponse(result.error?.message || 'Failed to retrieve amendment history.', result.error?.code));
   }
 }
+
+export async function handleContractFlowHealth(_req: Request, res: Response): Promise<void> {
+  const result = await contractflowProxy.checkHealth();
+  if (result.error) {
+    res.status(result.status).json({
+      success: false,
+      error: result.error.message,
+      code: result.error.code,
+      ...(result.error.details ? { data: result.error.details } : {}),
+    });
+    return;
+  }
+
+  res.status(result.status).json(successResponse(result.data));
+}
