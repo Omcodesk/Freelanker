@@ -431,7 +431,9 @@ GRANT USAGE, SELECT ON SEQUENCE public.cf_audit_append_sequence_seq TO service_r
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'contractflow_app') THEN
-        CREATE ROLE contractflow_app WITH LOGIN NOINHERIT;
+        CREATE ROLE contractflow_app WITH LOGIN NOINHERIT BYPASSRLS;
+    ELSE
+        ALTER ROLE contractflow_app BYPASSRLS;
     END IF;
 END;
 $$;
@@ -473,60 +475,58 @@ ALTER TABLE public.cf_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cf_assessment_reviews ENABLE ROW LEVEL SECURITY;
 
 -- 11.1 cf_artifacts: Read access for project members
+DROP POLICY IF EXISTS "Project members can read cf_artifacts" ON public.cf_artifacts;
 CREATE POLICY "Project members can read cf_artifacts"
     ON public.cf_artifacts FOR SELECT
-    USING (EXISTS (
-        SELECT 1 FROM public.project_members pm
-        WHERE pm.project_id = cf_artifacts.project_id
-        AND pm.user_id = auth.uid()
-    ));
+    USING (public.is_project_member(project_id, auth.uid()));
 
 -- 11.2 cf_approval_versions: Read access for project members via agreements.project_id
+DROP POLICY IF EXISTS "Project members can read cf_approval_versions" ON public.cf_approval_versions;
 CREATE POLICY "Project members can read cf_approval_versions"
     ON public.cf_approval_versions FOR SELECT
     USING (EXISTS (
         SELECT 1 FROM public.agreements a
-        JOIN public.project_members pm ON pm.project_id = a.project_id
         WHERE a.id = cf_approval_versions.original_agreement_id
-        AND pm.user_id = auth.uid()
+        AND public.is_project_member(a.project_id, auth.uid())
     ));
 
 -- 11.3 cf_approval_heads: Read access for project members via version -> agreement
+DROP POLICY IF EXISTS "Project members can read cf_approval_heads" ON public.cf_approval_heads;
 CREATE POLICY "Project members can read cf_approval_heads"
     ON public.cf_approval_heads FOR SELECT
     USING (EXISTS (
         SELECT 1 FROM public.cf_approval_versions v
         JOIN public.agreements a ON a.id = v.original_agreement_id
-        JOIN public.project_members pm ON pm.project_id = a.project_id
         WHERE v.amendment_id = cf_approval_heads.amendment_id
-        AND pm.user_id = auth.uid()
+        AND public.is_project_member(a.project_id, auth.uid())
     ));
 
 -- 11.4 cf_decisions: Read access for project members
+DROP POLICY IF EXISTS "Project members can read cf_decisions" ON public.cf_decisions;
 CREATE POLICY "Project members can read cf_decisions"
     ON public.cf_decisions FOR SELECT
     USING (EXISTS (
         SELECT 1 FROM public.cf_approval_versions v
         JOIN public.agreements a ON a.id = v.original_agreement_id
-        JOIN public.project_members pm ON pm.project_id = a.project_id
         WHERE v.amendment_id = cf_decisions.amendment_id
         AND v.revision = cf_decisions.revision
-        AND pm.user_id = auth.uid()
+        AND public.is_project_member(a.project_id, auth.uid())
     ));
 
 -- 11.5 cf_audit: Read access for project members
+DROP POLICY IF EXISTS "Project members can read cf_audit" ON public.cf_audit;
 CREATE POLICY "Project members can read cf_audit"
     ON public.cf_audit FOR SELECT
     USING (EXISTS (
         SELECT 1 FROM public.cf_approval_versions v
         JOIN public.agreements a ON a.id = v.original_agreement_id
-        JOIN public.project_members pm ON pm.project_id = a.project_id
         WHERE v.amendment_id = cf_audit.amendment_id
         AND v.revision = cf_audit.revision
-        AND pm.user_id = auth.uid()
+        AND public.is_project_member(a.project_id, auth.uid())
     ));
 
 -- 11.6 cf_reviews: Read access for project members and reviewer
+DROP POLICY IF EXISTS "Project members and reviewer can read cf_reviews" ON public.cf_reviews;
 CREATE POLICY "Project members and reviewer can read cf_reviews"
     ON public.cf_reviews FOR SELECT
     USING (
@@ -534,23 +534,22 @@ CREATE POLICY "Project members and reviewer can read cf_reviews"
         EXISTS (
             SELECT 1 FROM public.cf_approval_versions v
             JOIN public.agreements a ON a.id = v.original_agreement_id
-            JOIN public.project_members pm ON pm.project_id = a.project_id
             WHERE v.amendment_id = cf_reviews.amendment_id
             AND v.revision = cf_reviews.revision
-            AND pm.user_id = auth.uid()
+            AND public.is_project_member(a.project_id, auth.uid())
         )
     );
 
 -- 11.7 cf_assessment_reviews: Read access for project members and reviewer
+DROP POLICY IF EXISTS "Project members and reviewer can read cf_assessment_reviews" ON public.cf_assessment_reviews;
 CREATE POLICY "Project members and reviewer can read cf_assessment_reviews"
     ON public.cf_assessment_reviews FOR SELECT
     USING (
         reviewer_id = auth.uid() OR
         EXISTS (
             SELECT 1 FROM public.agreements a
-            JOIN public.project_members pm ON pm.project_id = a.project_id
             WHERE a.id = cf_assessment_reviews.original_agreement_id
-            AND pm.user_id = auth.uid()
+            AND public.is_project_member(a.project_id, auth.uid())
         )
     );
 
