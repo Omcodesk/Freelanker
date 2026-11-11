@@ -35,6 +35,9 @@ interface AuthContextType {
   clearError: () => void;
 }
 
+export const SAFE_PROFILE_COLUMNS =
+  'id, display_name, headline, bio, avatar_url, skills, portfolio_links, is_available, created_at, updated_at';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(SAFE_PROFILE_COLUMNS)
         .eq('id', userId)
         .maybeSingle();
 
@@ -70,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           skills: data.skills ?? [],
           portfolioLinks: data.portfolio_links ?? [],
           isAvailable: data.is_available,
-          isAdmin: data.is_admin,
           createdAt: data.created_at,
           updatedAt: data.updated_at,
         };
