@@ -12,7 +12,7 @@
  * - Never leaks upstream service credentials or connection strings.
  */
 
-import { env } from '../config/env.js';
+import { env, normalizeServiceUrl } from '../config/env.js';
 
 export interface ProxyResponse<T = unknown> {
   status: number;
@@ -60,7 +60,7 @@ export class ContractFlowProxyService {
     baseUrl?: string,
     timeoutMs = parseInt(process.env.CONTRACTFLOW_PROXY_TIMEOUT_MS || '45000', 10)
   ) {
-    this.baseUrl = (baseUrl || env.CONTRACTFLOW_SERVICE_URL).replace(/\/+$/, '');
+    this.baseUrl = normalizeServiceUrl(baseUrl || env.CONTRACTFLOW_SERVICE_URL);
     this.timeoutMs = timeoutMs;
   }
 
@@ -151,7 +151,16 @@ export class ContractFlowProxyService {
         data: responseJson as T,
       };
     } catch (err: unknown) {
+      const safeTarget = (() => {
+        try {
+          const parsed = new URL(url);
+          return `${parsed.origin}${parsed.pathname}`;
+        } catch {
+          return 'contractflow-upstream';
+        }
+      })();
       if (err instanceof Error && err.name === 'AbortError') {
+        console.warn(`[ContractFlowProxy] Timeout reaching ${safeTarget} after ${options.timeoutMs}ms`);
         return {
           status: 504,
           error: {
@@ -161,6 +170,8 @@ export class ContractFlowProxyService {
         };
       }
 
+      const causeCode = (err as any)?.cause?.code || (err as any)?.code || (err instanceof Error ? err.name : 'FETCH_ERROR');
+      console.error(`[ContractFlowProxy] Connection failed for ${safeTarget} (${causeCode})`);
       return {
         status: 503,
         error: {

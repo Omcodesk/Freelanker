@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import express from 'express';
 import { requireAuth, optionalAuth } from '../src/middleware/auth.js';
 import { supabaseAuth, supabaseAdmin } from '../src/lib/supabase.js';
+import { normalizeServiceUrl } from '../src/config/env.js';
 import {
   ContractFlowProxyService,
   translateContractFlowErrorMessage,
@@ -101,7 +102,13 @@ async function run() {
     }
   });
 
-  // 2. Error translation helper preserves codes & provides safe messages
+  // 2. Error translation helper & service URL normalization
+  await test('normalizeServiceUrl handles Render host:port, trailing slashes, and https URLs', async () => {
+    assert(normalizeServiceUrl('freelanker-contractflow:10000') === 'http://freelanker-contractflow:10000', 'Expected http:// prefix on bare host:port');
+    assert(normalizeServiceUrl('https://contractflow.onrender.com/') === 'https://contractflow.onrender.com', 'Expected trailing slash stripped');
+    assert(normalizeServiceUrl('') === 'http://127.0.0.1:8000', 'Expected default loopback URL');
+  });
+
   await test('translateContractFlowErrorMessage maps known FastAPI error codes safely', async () => {
     const msg = translateContractFlowErrorMessage('STALE_SOURCE', undefined, 409);
     assert(msg.toLowerCase().includes('source version') || msg.toLowerCase().includes('changed'), `Unexpected message: ${msg}`);

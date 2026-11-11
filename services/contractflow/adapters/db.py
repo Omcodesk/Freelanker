@@ -10,6 +10,7 @@ Supports:
 import os
 from contextvars import ContextVar
 from typing import AsyncGenerator
+from urllib.parse import parse_qs, urlparse
 import asyncpg
 
 from ..integrations.contracts import IntegrationError
@@ -28,6 +29,27 @@ def get_database_url() -> str | None:
     return None
 
 
+def _build_pool_kwargs(db_url: str) -> dict:
+    """Derive safe SSL and pooler settings from DATABASE_URL without logging secrets."""
+    parsed = urlparse(db_url)
+    host = (parsed.hostname or "").lower()
+    query = parse_qs(parsed.query)
+    kwargs: dict = {
+        "dsn": db_url,
+        "min_size": 2,
+        "max_size": 10,
+        "timeout": 30.0,
+        "command_timeout": 30.0,
+    }
+    # Disable asyncpg prepared statement cache when using Supavisor/PgBouncer transaction pooler
+    if parsed.port == 6543 or "pooler" in host or "pgbouncer" in query:
+        kwargs["statement_cache_size"] = 0
+    # Enforce TLS for remote Postgres hosts unless sslmode is explicitly provided in DSN
+    if host and host not in {"localhost", "127.0.0.1", "::1"} and "sslmode" not in query and "ssl" not in query:
+        kwargs["ssl"] = "require"
+    return kwargs
+
+
 async def init_db_pool() -> asyncpg.Pool | None:
     """Initialize the global connection pool if DATABASE_URL is configured."""
     global _pool
@@ -35,13 +57,7 @@ async def init_db_pool() -> asyncpg.Pool | None:
     if not db_url:
         return None
     if _pool is None:
-        _pool = await asyncpg.create_pool(
-            dsn=db_url,
-            min_size=2,
-            max_size=10,
-            timeout=30.0,
-            command_timeout=30.0,
-        )
+        _pool = await asyncpg.create_pool(**_build_pool_kwargs(db_url))
     return _pool
 
 

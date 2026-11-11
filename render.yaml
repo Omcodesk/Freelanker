@@ -1,0 +1,61 @@
+# Render Blueprint for Freelanker Express API + ContractFlow Python Microservice
+# Set all sync: false secrets in the Render Dashboard before deploying.
+
+services:
+  - type: web
+    name: freelanker-contractflow
+    runtime: python
+    buildCommand: pip install -r services/contractflow/requirements.txt
+    startCommand: python -m uvicorn services.contractflow.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # postgresql://contractflow_app:<URL_ENCODED_PASSWORD>@db.<ref>.supabase.co:5432/postgres?sslmode=require
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CONTRACTFLOW_ENABLE_GROQ
+        value: "false"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: CONTRACTFLOW_TIMEOUT_SECONDS
+        value: "30"
+
+  - type: web
+    name: freelanker-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: CONTRACTFLOW_SERVICE_URL
+        fromService:
+          type: web
+          name: freelanker-contractflow
+          property: hostport
+      - key: CONTRACTFLOW_PROXY_TIMEOUT_MS
+        value: "45000"

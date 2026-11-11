@@ -132,6 +132,16 @@ async def lifespan(app: FastAPI):
     else:
         app.state.contractflow_runtime = None
 
+    logger.info(
+        "ContractFlow startup summary: db_configured=%s pool_ready=%s jwt_configured=%s anon_key_configured=%s runtime_configured=%s groq_enabled=%s",
+        bool(db_url),
+        pool is not None,
+        jwt_ok,
+        bool((os.environ.get("SUPABASE_ANON_KEY") or "").strip()),
+        app.state.contractflow_runtime is not None,
+        bool(app.state.contractflow_runtime and app.state.contractflow_runtime.provider is not None),
+    )
+
     yield
 
     await close_db_pool()
@@ -182,6 +192,7 @@ async def health_check(request: Request):
         "database_configured": database_configured,
         "database_connected": database_connected,
         "jwt_configured": jwt_configured,
+        "supabase_anon_key_configured": bool((os.environ.get("SUPABASE_ANON_KEY") or "").strip()),
         "runtime_configured": runtime_configured,
         "groq_enabled": groq_enabled,
         "groq_configured": is_groq_enabled(),
@@ -193,6 +204,7 @@ if __name__ == "__main__":
     import uvicorn
 
     load_service_env()
-    host = os.environ.get("CONTRACTFLOW_HOST", "127.0.0.1")
-    port = int(os.environ.get("CONTRACTFLOW_PORT", "8000"))
+    # Respect PaaS-injected PORT and bind 0.0.0.0 in hosted environments while keeping 127.0.0.1 for local dev
+    port = int(os.environ.get("PORT") or os.environ.get("CONTRACTFLOW_PORT") or "8000")
+    host = os.environ.get("CONTRACTFLOW_HOST") or ("0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
     uvicorn.run("services.contractflow.main:app", host=host, port=port)

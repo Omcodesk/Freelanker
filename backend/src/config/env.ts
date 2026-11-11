@@ -14,6 +14,14 @@ function optionalEnv(key: string, defaultValue: string): string {
   return process.env[key] ?? defaultValue;
 }
 
+export function normalizeServiceUrl(rawUrl: string): string {
+  const trimmed = rawUrl.trim().replace(/\/+$/, '');
+  if (!trimmed) {
+    return 'http://127.0.0.1:8000';
+  }
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+}
+
 export const env = {
   PORT: parseInt(optionalEnv('PORT', '4000'), 10),
   NODE_ENV: optionalEnv('NODE_ENV', 'development'),
@@ -32,7 +40,7 @@ export const env = {
   PAYPAL_MODE: optionalEnv('PAYPAL_MODE', 'sandbox'),
 
   // ContractFlow Python/FastAPI microservice endpoint
-  CONTRACTFLOW_SERVICE_URL: optionalEnv('CONTRACTFLOW_SERVICE_URL', 'http://127.0.0.1:8000'),
+  CONTRACTFLOW_SERVICE_URL: normalizeServiceUrl(optionalEnv('CONTRACTFLOW_SERVICE_URL', 'http://127.0.0.1:8000')),
 
   get isDevelopment(): boolean {
     return this.NODE_ENV === 'development';

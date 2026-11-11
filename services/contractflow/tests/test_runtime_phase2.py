@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from .. import main as service_main
+from ..adapters.db import _build_pool_kwargs
 from ..config import is_groq_enabled, load_service_env
 from .test_v6_api import HEADERS, PREFIX, block_external_clients, client, project_body
 from .v6_support import runtime, seed
@@ -204,4 +205,21 @@ def test_env_loader_and_groq_feature_flag(tmp_path, monkeypatch):
     assert is_groq_enabled({"GROQ_API_KEY": "gsk_test"}) is False
     assert is_groq_enabled({"GROQ_API_KEY": "", "CONTRACTFLOW_ENABLE_GROQ": "true"}) is False
     assert is_groq_enabled({"GROQ_API_KEY": "gsk_test", "CONTRACTFLOW_ENABLE_GROQ": "true"}) is True
+
+
+def test_db_pool_kwargs_for_supavisor_pooler_and_remote_ssl():
+    direct_local = _build_pool_kwargs("postgresql://contractflow_app:pw@127.0.0.1:5432/postgres")
+    assert "statement_cache_size" not in direct_local
+    assert "ssl" not in direct_local
+
+    remote_direct = _build_pool_kwargs("postgresql://contractflow_app:pw@db.example.supabase.co:5432/postgres")
+    assert remote_direct["ssl"] == "require"
+    assert "statement_cache_size" not in remote_direct
+
+    remote_pooler = _build_pool_kwargs(
+        "postgresql://contractflow_app.ref:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    )
+    assert remote_pooler["statement_cache_size"] == 0
+    assert "ssl" not in remote_pooler  # Respects explicit sslmode=require in DSN
+
 
