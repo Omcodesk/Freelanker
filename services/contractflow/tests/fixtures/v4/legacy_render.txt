@@ -1,0 +1,69 @@
+PROPOSED CONTRACT AMENDMENT
+PROPOSED AMENDMENT — NOT EFFECTIVE UNTIL BOTH PARTIES APPROVE
+Draft reference: 22222222-2222-4222-8222-222222222222
+HUMAN AND SEMANTIC REVIEW REQUIRED; deterministic checks do not prove semantic correctness.
+
+ORIGINAL AGREEMENT REFERENCE
+Agreement: SYNTHETIC-AGREEMENT-1; version: 1; project: SYNTHETIC-WEB-001.
+Assessment: SYNTHETIC-ASSESSMENT-1; version: 1.
+Client: Example Bakery (Synthetic) (TEST-CLIENT-1); freelancer: Example Developer (Synthetic) (TEST-FREELANCER-1).
+
+PURPOSE OF AMENDMENT
+For negotiation of client-requested work identified in the reviewed scope assessment.
+
+EXISTING AGREED FACTS — ORIGINAL SCOPE SUMMARY
+Build a responsive three-page bakery website using client-supplied copy and images.
+Original budget: 1200.00 USD; start: 2027-01-04; deadline: 2027-01-29.
+Original deliverable D1: Home, menu and contact page source files. — due 2027-01-22.
+Original deliverable D2: Website deployment instructions. — due 2027-01-29.
+Original milestone M1: Deliver website page source files. — due 2027-01-22; deliverables: D1.
+Original milestone M2: Deliver deployment documentation. — due 2027-01-29; deliverables: D2.
+
+CLIENT-REQUESTED CHANGES (NOT AGREED TERMS)
+Add an online ordering system with payment integration.
+
+PROPOSED ADDITIONAL WORK
+The proposed additional work could include online ordering with payment integration, subject to negotiation.
+
+PROPOSED DELIVERABLE CHANGES
+A proposed deliverable could cover online ordering with payment integration, subject to negotiation.
+
+TIMELINE CONSIDERATIONS
+The additional work may affect the existing project timeline and requires human review before any deadline change.
+No revised deadline is established by this draft.
+
+COMPENSATION CONSIDERATIONS
+The additional work may affect compensation and requires human review before any change.
+No additional amount or payment schedule is established by this draft.
+
+UNRESOLVED TERMS
+Additional scope confirmation: unresolved — requires negotiation and review.
+Proposed deliverable details: unresolved — requires negotiation and review.
+Revised timeline: unresolved — requires negotiation and review.
+Additional compensation: unresolved — requires negotiation and review.
+Governing law: unresolved — requires negotiation and review.
+Intellectual property ownership: unresolved — requires negotiation and review.
+Termination conditions: unresolved — requires negotiation and review.
+Penalties: unresolved — requires negotiation and review.
+Payment schedule: unresolved — requires negotiation and review.
+Acceptance conditions: unresolved — requires negotiation and review.
+Other legal or commercial terms: unresolved — requires negotiation and review.
+
+SOURCE CITATIONS
+[agreement.scope] Build a responsive three-page bakery website using client-supplied copy and images.
+[request.client_request] Add an online ordering system with payment integration.
+[assessment.requested_changes/0/description] Add online ordering with payment integration.
+[agreement.scope] Build a responsive three-page bakery website using client-supplied copy and images.
+[request.client_request] Add an online ordering system with payment integration.
+[assessment.requested_changes/0/description] Add online ordering with payment integration.
+[agreement.deadline] 2027-01-29
+[request.client_request] Add an online ordering system with payment integration.
+[assessment.explanation] Online ordering and payment integration appear to add functionality beyond the described website and page source deliverables.
+[agreement.budget] 1200.00
+[request.client_request] Add an online ordering system with payment integration.
+[assessment.explanation] Online ordering and payment integration appear to add functionality beyond the described website and page source deliverables.
+
+REVIEW AND APPROVAL NOTICE
+PROPOSED AMENDMENT — NOT EFFECTIVE UNTIL BOTH PARTIES APPROVE
+Review of an assessment does not approve this amendment. Neither party's approval is recorded here.
+The original agreement is not modified by generating this draft. No signatures or effective date are supplied.

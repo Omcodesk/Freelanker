@@ -1,0 +1,48 @@
+{
+  "in_scope": {
+    "classification": "IN_SCOPE",
+    "explanation": "The requested page source files appear covered by the agreed website deliverable.",
+    "source_references": [{"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}],
+    "requested_changes": [{
+      "description": "Provide the agreed page source files.",
+      "request_evidence": {"reference": "request.client_request", "excerpt": "Provide the source files for the home, menu and contact pages."},
+      "source_references": [{"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}]
+    }],
+    "potential_impacts": [],
+    "clarification_questions": [],
+    "context_references": []
+  },
+  "out_of_scope": {
+    "classification": "OUT_OF_SCOPE",
+    "explanation": "Online ordering and payment integration appear to add functionality beyond the described website and page source deliverables.",
+    "source_references": [
+      {"reference": "original.scope", "excerpt": "Build a responsive three-page bakery website using client-supplied copy and images."},
+      {"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}
+    ],
+    "requested_changes": [{
+      "description": "Add online ordering with payment integration.",
+      "request_evidence": {"reference": "request.client_request", "excerpt": "Add an online ordering system with payment integration."},
+      "source_references": [{"reference": "original.scope", "excerpt": "Build a responsive three-page bakery website using client-supplied copy and images."}]
+    }],
+    "potential_impacts": [
+      {"category": "DELIVERABLES", "explanation": "Additional ordering functionality could expand the agreed deliverables.", "source_references": [{"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}]},
+      {"category": "TIMELINE", "explanation": "The implementation effort could affect the project timeline; review is needed.", "source_references": [{"reference": "original.deadline", "excerpt": "2027-01-29"}]},
+      {"category": "COMPENSATION", "explanation": "Additional effort could require a compensation discussion, subject to human review.", "source_references": [{"reference": "original.budget", "excerpt": "1200.00"}]}
+    ],
+    "clarification_questions": [],
+    "context_references": []
+  },
+  "needs_clarification": {
+    "classification": "NEEDS_CLARIFICATION",
+    "explanation": "The request does not describe which menu interactions are expected, so its relationship to the agreed website is unclear.",
+    "source_references": [{"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}],
+    "requested_changes": [{
+      "description": "Introduce unspecified menu interaction.",
+      "request_evidence": {"reference": "request.client_request", "excerpt": "Make the menu interactive."},
+      "source_references": [{"reference": "original.deliverables/0/description", "excerpt": "Home, menu and contact page source files."}]
+    }],
+    "potential_impacts": [],
+    "clarification_questions": ["Which menu interactions are requested?", "Does the request involve ordering functionality or visual interaction?"],
+    "context_references": [{"reference": "context/0", "excerpt": "The client has not described the intended interaction."}]
+  }
+}
