@@ -17,6 +17,10 @@ import { requireAuth } from '../middleware/auth.js';
 import { publicRateLimiter } from '../middleware/rateLimiter.js';
 import {
   handleContractFlowHealth,
+  handleGetProjectOverview,
+  handleCreateAssessmentReview,
+  handleCreateAmendmentReview,
+  handleRevokeAmendmentReview,
   handleGenerateContract,
   handleDraftAgreement,
   handleAssessScope,
@@ -38,12 +42,16 @@ router.use(publicRateLimiter({ maxRequests: 60, windowMs: 60 * 1000 }));
 router.get('/health', handleContractFlowHealth);
 
 // ─── Project Scoped Routes ──────────────────────────────────────────────────
+router.get(['/projects/:id/overview', '/:id/overview'], handleGetProjectOverview);
 router.post(['/projects/:id/contracts/generate', '/:id/contracts/generate'], handleGenerateContract);
 router.post(['/projects/:id/agreements/draft', '/:id/agreements/draft'], handleDraftAgreement);
 router.post(['/projects/:id/scope/assess', '/:id/scope/assess'], handleAssessScope);
+router.post(['/projects/:id/assessments/:assessmentId/reviews', '/:id/assessments/:assessmentId/reviews'], handleCreateAssessmentReview);
 router.post(['/projects/:id/amendments/generate', '/:id/amendments/generate'], handleGenerateAmendment);
 
 // ─── Amendment Scoped Routes (Resolved to Owning Project) ────────────────────
+router.post('/amendments/:amendmentId/reviews', handleCreateAmendmentReview);
+router.post('/amendments/:amendmentId/reviews/:reviewId/revoke', handleRevokeAmendmentReview);
 router.post('/amendments/:amendmentId/register', handleRegisterAmendment);
 router.post('/amendments/:amendmentId/decisions', handleSubmitDecision);
 router.get('/amendments/:amendmentId/status', handleGetAmendmentStatus);

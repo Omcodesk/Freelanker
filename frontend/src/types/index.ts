@@ -70,6 +70,7 @@ export interface Project {
   paymentArrangement?: PaymentArrangement;
   aiScopeData?: Record<string, unknown>;
   reviewPeriodDays: number;
+  sourceVersion: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -123,6 +124,7 @@ export interface ProjectDetail {
     expiresAt: string;
     createdAt: string;
   } | null;
+  milestones?: Milestone[];
 }
 
 export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
@@ -241,6 +243,118 @@ export interface AgreementApproval {
   action: 'approved' | 'changes_requested' | 'withdrawn';
   notes?: string;
   createdAt: string;
+}
+
+export interface AgreementWithDigest extends Agreement {
+  contentDigest: string;
+}
+
+export interface AgreementBundleResponse {
+  currentAgreement: AgreementWithDigest | null;
+  versions: AgreementWithDigest[];
+  approvals: AgreementApproval[];
+}
+
+export type AmendmentApprovalState =
+  | 'PENDING_REVIEW'
+  | 'PARTIALLY_APPROVED'
+  | 'BOTH_APPROVED'
+  | 'REJECTED'
+  | 'SUPERSEDED';
+
+export interface ContractFlowApprovalStatus {
+  amendment_id: string;
+  amendment_version: number;
+  content_digest: string;
+  state: AmendmentApprovalState;
+  remaining_approvals: Array<'CLIENT' | 'FREELANCER'>;
+  human_review_required: boolean;
+  semantic_review_required: boolean;
+  effective: boolean;
+}
+
+export interface ContractFlowAuditEvent {
+  event_id: string;
+  amendment_id: string;
+  amendment_version: number;
+  content_digest: string;
+  actor_id: string;
+  role: 'CLIENT' | 'FREELANCER';
+  action: 'CREATED' | 'APPROVE' | 'REJECT' | 'SUPERSEDED';
+  previous_state: AmendmentApprovalState | null;
+  new_state: AmendmentApprovalState;
+  timestamp: string;
+  idempotency_reference?: string | null;
+  decision_id?: string | null;
+}
+
+export interface ContractFlowAssessmentReview {
+  assessment_review_id: string;
+  review_reference: string;
+  assessment_id: string;
+  assessment_revision: number;
+  original_agreement_id: string;
+  original_agreement_version: number;
+  reviewer_id: string;
+  decision: string;
+  reviewed_at: string;
+  revoked: boolean;
+}
+
+export interface ContractFlowAmendmentReview {
+  review_id: string;
+  amendment_id: string;
+  revision: number;
+  content_digest: string;
+  reviewer_id: string;
+  reviewed_at: string;
+  expires_at: string;
+  human_review: boolean;
+  semantic_review: boolean;
+  revoked: boolean;
+  revoked_at?: string | null;
+  revocation_reason?: string | null;
+}
+
+export interface ContractFlowArtifactItem {
+  artifact_id: string;
+  revision: number;
+  kind: 'CONTRACT' | 'AGREEMENT' | 'ASSESSMENT' | 'AMENDMENT';
+  source_version: number;
+  content_digest: string;
+  created_at: string;
+  payload: Record<string, any>;
+  assessment_reviews?: ContractFlowAssessmentReview[];
+  approval_digest?: string | null;
+  approval_head?: {
+    current_revision: number;
+    is_current_head: boolean;
+    state: AmendmentApprovalState;
+    approval_digest: string;
+    original_agreement_id: string;
+    original_agreement_version: number;
+    review_reference: string;
+    created_at: string;
+  } | null;
+  reviews?: ContractFlowAmendmentReview[];
+  decisions?: Array<{
+    decision_id: string;
+    actor_id: string;
+    role: 'CLIENT' | 'FREELANCER';
+    decision: 'APPROVE' | 'REJECT';
+    rejection_reason?: string | null;
+    created_at: string;
+  }>;
+}
+
+export interface ContractFlowOverview {
+  project_id: string;
+  source_version: number;
+  source_ready: boolean;
+  missing_requirements: string[];
+  has_active_agreement: boolean;
+  groq_enabled: boolean;
+  artifacts: ContractFlowArtifactItem[];
 }
 
 // ─── Milestones, Tasks & Deliverables (WorkBridge) ─────────────────────────────

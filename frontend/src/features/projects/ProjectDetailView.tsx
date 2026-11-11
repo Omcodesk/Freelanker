@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError } from '../../services/api.ts';
+import { contractflowService } from '../../services/contractflowService.ts';
 import { useRouter } from '../../lib/router.tsx';
-import type { ProjectDetail, InvitationResponse } from '../../types/index.ts';
+import { MilestonesPanel } from '../contractflow/MilestonesPanel.tsx';
+import { AgreementSection } from '../contractflow/AgreementSection.tsx';
+import { AmendmentsSection } from '../contractflow/AmendmentsSection.tsx';
+import type {
+  AgreementBundleResponse,
+  ContractFlowOverview,
+  InvitationResponse,
+  ProjectDetail,
+} from '../../types/index.ts';
 
 interface ProjectDetailViewProps {
   projectId: string;
@@ -22,8 +31,36 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
   const [latestInviteLink, setLatestInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Cancellation State
+  // Cancellation & ContractFlow Workspace State
   const [cancelling, setCancelling] = useState(false);
+  const [agreementBundle, setAgreementBundle] = useState<AgreementBundleResponse | null>(null);
+  const [agreementLoading, setAgreementLoading] = useState(false);
+  const [cfOverview, setCfOverview] = useState<ContractFlowOverview | null>(null);
+  const [cfNotice, setCfNotice] = useState<string | null>(null);
+
+  // Inline budget edit state (needed if project was created without a budget)
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [savingBudget, setSavingBudget] = useState(false);
+
+  const fetchContractFlowState = async () => {
+    setAgreementLoading(true);
+    setCfNotice(null);
+    const [agResult, ovResult] = await Promise.allSettled([
+      contractflowService.getCurrentAgreement(projectId),
+      contractflowService.getOverview(projectId),
+    ]);
+    if (agResult.status === 'fulfilled') {
+      setAgreementBundle(agResult.value);
+    }
+    if (ovResult.status === 'fulfilled') {
+      setCfOverview(ovResult.value);
+    } else {
+      const msg = ovResult.reason instanceof ApiError ? ovResult.reason.message : 'ContractFlow service unavailable';
+      setCfNotice(msg);
+    }
+    setAgreementLoading(false);
+  };
 
   const fetchProjectDetail = async () => {
     setLoading(true);
@@ -31,11 +68,32 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     try {
       const data = await api.get<ProjectDetail>(`/projects/${projectId}`);
       setDetail(data);
+      setBudgetInput(data.project.totalBudget ? String(data.project.totalBudget) : '');
+      await fetchContractFlowState();
     } catch (err: unknown) {
       const msg = err instanceof ApiError ? err.message : 'Failed to load project details.';
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveBudget = async (e: FormEvent) => {
+    e.preventDefault();
+    const num = Number(budgetInput);
+    if (!Number.isFinite(num) || num <= 0) {
+      alert('Budget must be a positive number.');
+      return;
+    }
+    setSavingBudget(true);
+    try {
+      await api.patch(`/projects/${projectId}`, { totalBudget: num });
+      setEditingBudget(false);
+      await fetchProjectDetail();
+    } catch (err: unknown) {
+      alert(err instanceof ApiError ? err.message : 'Failed to update project budget.');
+    } finally {
+      setSavingBudget(false);
     }
   };
 
@@ -126,8 +184,9 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
     );
   }
 
-  const { project, currentUserRole, members, activeInvitation } = detail;
+  const { project, currentUserRole, members, activeInvitation, milestones = [] } = detail;
   const isClient = currentUserRole === 'client';
+  const milestonesEditable = ['draft', 'invitation_pending', 'awaiting_agreement'].includes(project.status);
 
   // Check if counterpart is unoccupied
   const isFreelancerOccupied = Boolean(project.freelancerId);
@@ -170,6 +229,9 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
               <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                 You: {isClient ? '💼 Client' : '🛠️ Freelancer'}
               </span>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                source v{project.sourceVersion ?? 1}
+              </span>
               <span className="text-[11px] text-slate-400">
                 Created on {new Date(project.createdAt).toLocaleDateString()}
               </span>
@@ -180,33 +242,80 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
             </p>
           </div>
 
-          <div className="sm:text-right shrink-0 bg-slate-50 p-4 rounded-xl border border-slate-100 min-w-[160px]">
+          <div className="sm:text-right shrink-0 bg-slate-50 p-4 rounded-xl border border-slate-100 min-w-[180px] space-y-1">
             <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
               Project Budget
             </span>
-            <span className="text-xl font-bold text-slate-900">
-              {project.totalBudget
-                ? `${project.currency} ${Number(project.totalBudget).toLocaleString()}`
-                : 'Flexible'}
-            </span>
-            <span className="text-[11px] text-slate-500 block mt-0.5 capitalize">
-              {project.paymentArrangement?.replace(/_/g, ' ') || 'Milestone payment'}
-            </span>
+            {editingBudget ? (
+              <form onSubmit={handleSaveBudget} className="space-y-1.5">
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  value={budgetInput}
+                  onChange={(e) => setBudgetInput(e.target.value)}
+                  className="w-full px-2 py-1 border border-slate-300 rounded text-xs bg-white text-slate-900"
+                />
+                <div className="flex justify-end gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditingBudget(false)}
+                    className="px-2 py-0.5 text-[11px] text-slate-600"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingBudget}
+                    className="px-2 py-0.5 bg-brand-600 text-white rounded text-[11px] font-semibold"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <span className="text-xl font-bold text-slate-900">
+                  {project.totalBudget
+                    ? `${project.currency} ${Number(project.totalBudget).toLocaleString()}`
+                    : 'Not set'}
+                </span>
+                <span className="text-[11px] text-slate-500 block capitalize">
+                  {project.paymentArrangement?.replace(/_/g, ' ') || 'Milestone payment'}
+                </span>
+                {milestonesEditable && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingBudget(true)}
+                    className="text-[11px] font-semibold text-brand-600 hover:underline block sm:ml-auto"
+                  >
+                    {project.totalBudget ? 'Update budget' : 'Set required budget'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
-        {/* Milestone / State Indicator */}
+        {/* Status Indicator */}
         {project.status === 'awaiting_agreement' && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base">🤝</span>
               <span>
-                <strong>Both members connected!</strong> Next step: Create and approve the project agreement in ContractFlow.
+                <strong>Both members connected!</strong> Next step: Configure planned milestones and approve the initial project agreement below.
               </span>
             </div>
             <span className="font-semibold text-blue-900 bg-blue-100 px-2 py-1 rounded">
-              Ready for ContractFlow
+              Agreement Stage
             </span>
+          </div>
+        )}
+
+        {cfNotice && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+            ContractFlow microservice notice: {cfNotice}
           </div>
         )}
       </div>
@@ -395,6 +504,34 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
           )}
         </div>
       </div>
+
+      {/* Planned Milestones & Deliverables */}
+      <MilestonesPanel
+        project={project}
+        milestones={milestones}
+        editable={milestonesEditable}
+        onChanged={fetchProjectDetail}
+      />
+
+      {/* Initial Project Agreement Workflow */}
+      <AgreementSection
+        project={project}
+        currentUserRole={currentUserRole}
+        milestones={milestones}
+        agreementBundle={agreementBundle}
+        overview={cfOverview}
+        loading={agreementLoading}
+        onRefresh={fetchProjectDetail}
+      />
+
+      {/* ContractFlow Scope Assessments & Amendments (V3–V5) */}
+      <AmendmentsSection
+        project={project}
+        currentUserRole={currentUserRole}
+        currentAgreement={agreementBundle?.currentAgreement ?? null}
+        overview={cfOverview}
+        onRefresh={fetchProjectDetail}
+      />
     </div>
   );
 }

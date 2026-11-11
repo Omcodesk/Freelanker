@@ -1,8 +1,10 @@
 import { supabaseAdmin } from '../lib/supabase.js';
 import { logActivity } from './activity.service.js';
+import { mapMilestoneRow } from './milestone.service.js';
 import type {
   Project,
   ProjectMember,
+  Milestone,
   ProjectStatus,
   PaymentArrangement,
 } from '../types/index.js';
@@ -48,6 +50,7 @@ export interface ProjectDetailResponse {
     expiresAt: string;
     createdAt: string;
   } | null;
+  milestones: Milestone[];
 }
 
 export class ProjectError extends Error {
@@ -260,6 +263,14 @@ export async function getProjectById(
     .limit(1)
     .maybeSingle();
 
+  // 5. Fetch planned milestones
+  const { data: milestoneRows } = await supabaseAdmin
+    .from('milestones')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('order_index', { ascending: true })
+    .order('created_at', { ascending: true });
+
   return {
     project: mapProjectRow(projectRow),
     currentUserRole: memberRecord.role,
@@ -283,6 +294,7 @@ export async function getProjectById(
           createdAt: activeInv.created_at,
         }
       : null,
+    milestones: (milestoneRows || []).map(mapMilestoneRow),
   };
 }
 
@@ -454,6 +466,7 @@ function mapProjectRow(row: any): Project {
     paymentArrangement: row.payment_arrangement || undefined,
     aiScopeData: row.ai_scope_data || undefined,
     reviewPeriodDays: row.review_period_days,
+    sourceVersion: Number(row.source_version ?? 1),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

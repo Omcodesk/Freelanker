@@ -496,3 +496,177 @@ export async function handleContractFlowHealth(_req: Request, res: Response): Pr
 
   res.status(result.status).json(successResponse(result.data));
 }
+
+async function authorizeAmendmentAccess(
+  req: Request,
+  res: Response
+): Promise<{ amendmentId: string; token: string } | null> {
+  const amendmentId = req.params.amendmentId;
+  if (!UUID_REGEX.test(amendmentId)) {
+    res.status(400).json(errorResponse('Invalid amendment ID format. Expected UUID.', 'INVALID_PARAMETERS'));
+    return null;
+  }
+
+  const ownership = await resolveAmendmentOwningProject(amendmentId);
+  if (ownership.error) {
+    res.status(503).json(errorResponse('Database service unavailable to resolve amendment ownership.', 'SERVICE_UNAVAILABLE'));
+    return null;
+  }
+  if (!ownership.projectId) {
+    res.status(404).json(errorResponse('Amendment not found.', 'NOT_FOUND'));
+    return null;
+  }
+
+  const isMember = await verifyProjectMembership(req.user!.id, ownership.projectId);
+  if (!isMember) {
+    res.status(403).json(errorResponse('Forbidden: You are not a member of the project owning this amendment.', 'FORBIDDEN'));
+    return null;
+  }
+
+  const token = extractBearerToken(req);
+  if (!token) {
+    res.status(401).json(errorResponse('Authentication token required.', 'UNAUTHENTICATED'));
+    return null;
+  }
+
+  return { amendmentId, token };
+}
+
+export async function handleGetProjectOverview(req: Request, res: Response): Promise<void> {
+  const projectId = req.params.id;
+  if (!UUID_REGEX.test(projectId)) {
+    res.status(400).json(errorResponse('Invalid project ID format. Expected UUID.', 'INVALID_PARAMETERS'));
+    return;
+  }
+
+  const isMember = await verifyProjectMembership(req.user!.id, projectId);
+  if (!isMember) {
+    res.status(403).json(errorResponse('Forbidden: You are not a member of this project.', 'FORBIDDEN'));
+    return;
+  }
+
+  const token = extractBearerToken(req);
+  if (!token) {
+    res.status(401).json(errorResponse('Authentication token required.', 'UNAUTHENTICATED'));
+    return;
+  }
+
+  const result = await contractflowProxy.forward('GET', `/workspace/projects/${projectId}/overview`, token);
+  if (result.data) {
+    res.status(result.status).json(successResponse(result.data));
+  } else {
+    res.status(result.status).json(errorResponse(result.error?.message || 'Failed to load ContractFlow overview.', result.error?.code));
+  }
+}
+
+export async function handleCreateAssessmentReview(req: Request, res: Response): Promise<void> {
+  const projectId = req.params.id;
+  const assessmentId = req.params.assessmentId;
+  if (!UUID_REGEX.test(projectId) || !UUID_REGEX.test(assessmentId)) {
+    res.status(400).json(errorResponse('Invalid project or assessment ID format. Expected UUID.', 'INVALID_PARAMETERS'));
+    return;
+  }
+
+  const isMember = await verifyProjectMembership(req.user!.id, projectId);
+  if (!isMember) {
+    res.status(403).json(errorResponse('Forbidden: You are not a member of this project.', 'FORBIDDEN'));
+    return;
+  }
+
+  const { expected_version, expected_digest, confirm_human_review } = req.body ?? {};
+  if (!expected_version || typeof expected_version !== 'number' || !Number.isInteger(expected_version) || expected_version < 1) {
+    res.status(422).json(errorResponse('expected_version must be a positive integer (>= 1).', 'VALIDATION_ERROR'));
+    return;
+  }
+  if (!expected_digest || typeof expected_digest !== 'string' || !DIGEST_REGEX.test(expected_digest)) {
+    res.status(422).json(errorResponse('expected_digest must be a 64-character lowercase hex string.', 'VALIDATION_ERROR'));
+    return;
+  }
+  if (confirm_human_review !== true) {
+    res.status(422).json(errorResponse('confirm_human_review must be explicitly true.', 'VALIDATION_ERROR'));
+    return;
+  }
+
+  const token = extractBearerToken(req);
+  if (!token) {
+    res.status(401).json(errorResponse('Authentication token required.', 'UNAUTHENTICATED'));
+    return;
+  }
+
+  const result = await contractflowProxy.forward(
+    'POST',
+    `/workspace/projects/${projectId}/assessments/${assessmentId}/reviews`,
+    token,
+    { expected_version, expected_digest, confirm_human_review }
+  );
+  if (result.data) {
+    res.status(result.status).json(successResponse(result.data));
+  } else {
+    res.status(result.status).json(errorResponse(result.error?.message || 'Failed to record assessment review.', result.error?.code));
+  }
+}
+
+export async function handleCreateAmendmentReview(req: Request, res: Response): Promise<void> {
+  const access = await authorizeAmendmentAccess(req, res);
+  if (!access) return;
+
+  const { expected_version, expected_digest, human_review, semantic_review, expires_in_hours } = req.body ?? {};
+  if (!expected_version || typeof expected_version !== 'number' || !Number.isInteger(expected_version) || expected_version < 1) {
+    res.status(422).json(errorResponse('expected_version must be a positive integer (>= 1).', 'VALIDATION_ERROR'));
+    return;
+  }
+  if (!expected_digest || typeof expected_digest !== 'string' || !DIGEST_REGEX.test(expected_digest)) {
+    res.status(422).json(errorResponse('expected_digest must be a 64-character lowercase hex string.', 'VALIDATION_ERROR'));
+    return;
+  }
+  if (human_review !== true || semantic_review !== true) {
+    res.status(422).json(errorResponse('Both explicit human_review and semantic_review confirmations are required.', 'VALIDATION_ERROR'));
+    return;
+  }
+
+  const payload: Record<string, unknown> = {
+    expected_version,
+    expected_digest,
+    human_review: true,
+    semantic_review: true,
+  };
+  if (expires_in_hours !== undefined) {
+    payload.expires_in_hours = expires_in_hours;
+  }
+
+  const result = await contractflowProxy.forward('POST', `/workspace/amendments/${access.amendmentId}/reviews`, access.token, payload);
+  if (result.data) {
+    res.status(result.status).json(successResponse(result.data));
+  } else {
+    res.status(result.status).json(errorResponse(result.error?.message || 'Failed to record amendment review.', result.error?.code));
+  }
+}
+
+export async function handleRevokeAmendmentReview(req: Request, res: Response): Promise<void> {
+  const access = await authorizeAmendmentAccess(req, res);
+  if (!access) return;
+
+  const reviewId = req.params.reviewId;
+  if (!UUID_REGEX.test(reviewId)) {
+    res.status(400).json(errorResponse('Invalid review ID format. Expected UUID.', 'INVALID_PARAMETERS'));
+    return;
+  }
+
+  const reason = req.body?.reason;
+  if (typeof reason !== 'string' || reason.trim().length === 0 || reason.length > 500) {
+    res.status(422).json(errorResponse('A non-empty revocation reason (max 500 characters) is required.', 'VALIDATION_ERROR'));
+    return;
+  }
+
+  const result = await contractflowProxy.forward(
+    'POST',
+    `/workspace/amendments/${access.amendmentId}/reviews/${reviewId}/revoke`,
+    access.token,
+    { reason: reason.trim() }
+  );
+  if (result.data) {
+    res.status(result.status).json(successResponse(result.data));
+  } else {
+    res.status(result.status).json(errorResponse(result.error?.message || 'Failed to revoke amendment review.', result.error?.code));
+  }
+}

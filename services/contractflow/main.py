@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .api.router import router
+from .api.workspace_router import workspace_router
 from .integrations.workflow import IntegrationRuntime
 from .config import GroqSettings, is_groq_enabled, load_service_env
 from .providers.groq import GroqProvider
@@ -152,8 +153,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount ContractFlow router (/api/v1/contractflow)
+# Mount ContractFlow router (/api/v1/contractflow) and workspace router (/api/v1/contractflow/workspace)
 app.include_router(router)
+app.include_router(workspace_router)
 
 
 @app.get("/health", tags=["System"])

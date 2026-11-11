@@ -260,10 +260,10 @@ CREATE TABLE IF NOT EXISTS public.cf_reviews (
     revoked_at TIMESTAMPTZ,
     revocation_reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    -- Relational Constraint 5: Review grant must bind to its exact amendment revision
-    CONSTRAINT fk_cf_reviews_version
+    -- Relational Constraint 5: Review grant must bind to its exact amendment artifact revision
+    CONSTRAINT fk_cf_reviews_artifact
         FOREIGN KEY (amendment_id, revision)
-        REFERENCES public.cf_approval_versions(amendment_id, revision) ON DELETE RESTRICT,
+        REFERENCES public.cf_artifacts(artifact_id, revision) ON DELETE RESTRICT,
     CONSTRAINT chk_cf_reviews_lifetime CHECK (reviewed_at < expires_at),
     CONSTRAINT chk_cf_reviews_revocation CHECK (
         (revoked = FALSE AND revoked_at IS NULL AND revocation_reason IS NULL) OR
@@ -532,11 +532,10 @@ CREATE POLICY "Project members and reviewer can read cf_reviews"
     USING (
         reviewer_id = auth.uid() OR
         EXISTS (
-            SELECT 1 FROM public.cf_approval_versions v
-            JOIN public.agreements a ON a.id = v.original_agreement_id
-            WHERE v.amendment_id = cf_reviews.amendment_id
-            AND v.revision = cf_reviews.revision
-            AND public.is_project_member(a.project_id, auth.uid())
+            SELECT 1 FROM public.cf_artifacts art
+            WHERE art.artifact_id = cf_reviews.amendment_id
+            AND art.revision = cf_reviews.revision
+            AND public.is_project_member(art.project_id, auth.uid())
         )
     );
 

@@ -67,6 +67,7 @@ export interface Project {
   paymentArrangement?: PaymentArrangement;
   aiScopeData?: Record<string, unknown>;
   reviewPeriodDays: number;
+  sourceVersion: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -120,6 +121,7 @@ export interface ProjectDetail {
     expiresAt: string;
     createdAt: string;
   } | null;
+  milestones?: Milestone[];
 }
 
 export type InvitationStatus = 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled';

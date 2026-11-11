@@ -150,7 +150,7 @@ class SupabaseCoreSource(WorkBridgeSource):
                 """
                 SELECT id, version_number, content_snapshot
                 FROM public.agreements
-                WHERE project_id = $1 AND is_current = TRUE
+                WHERE project_id = $1 AND is_current = TRUE AND status IN ('approved', 'active')
                 LIMIT 1
                 """,
                 proj_uuid,
