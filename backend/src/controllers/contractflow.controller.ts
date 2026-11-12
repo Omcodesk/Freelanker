@@ -28,7 +28,7 @@ function extractBearerToken(req: Request): string | null {
 /**
  * Check if the given user is an active member of the specified project.
  */
-async function verifyProjectMembership(userId: string, projectId: string): Promise<boolean> {
+export async function verifyProjectMembership(userId: string, projectId: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin
     .from('project_members')
     .select('role')

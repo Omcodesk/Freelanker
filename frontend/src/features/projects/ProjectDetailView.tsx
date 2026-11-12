@@ -5,6 +5,9 @@ import { useRouter } from '../../lib/router.tsx';
 import { MilestonesPanel } from '../contractflow/MilestonesPanel.tsx';
 import { AgreementSection } from '../contractflow/AgreementSection.tsx';
 import { AmendmentsSection } from '../contractflow/AmendmentsSection.tsx';
+import { TasksView } from '../workbridge/TasksView.tsx';
+import { DeliverablesView } from '../workbridge/DeliverablesView.tsx';
+import { CollaborationView } from '../workbridge/CollaborationView.tsx';
 import type {
   AgreementBundleResponse,
   ContractFlowOverview,
@@ -33,6 +36,9 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
 
   // Cancellation & ContractFlow Workspace State
   const [cancelling, setCancelling] = useState(false);
+
+  // WorkBridge Workspace Tab selection
+  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'deliverables' | 'collaboration'>('overview');
   const [agreementBundle, setAgreementBundle] = useState<AgreementBundleResponse | null>(null);
   const [agreementLoading, setAgreementLoading] = useState(false);
   const [cfOverview, setCfOverview] = useState<ContractFlowOverview | null>(null);
@@ -505,33 +511,97 @@ export function ProjectDetailView({ projectId }: ProjectDetailViewProps) {
         </div>
       </div>
 
-      {/* Planned Milestones & Deliverables */}
-      <MilestonesPanel
-        project={project}
-        milestones={milestones}
-        editable={milestonesEditable}
-        onChanged={fetchProjectDetail}
-      />
+      {/* WorkBridge Workspace Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'overview'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          📄 Overview & Agreements
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('tasks')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'tasks'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          ☑ Tasks & Kanban
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('deliverables')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'deliverables'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          📦 Deliverables & Files
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('collaboration')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'collaboration'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          💬 Team Discussion
+        </button>
+      </div>
 
-      {/* Initial Project Agreement Workflow */}
-      <AgreementSection
-        project={project}
-        currentUserRole={currentUserRole}
-        milestones={milestones}
-        agreementBundle={agreementBundle}
-        overview={cfOverview}
-        loading={agreementLoading}
-        onRefresh={fetchProjectDetail}
-      />
+      {activeTab === 'tasks' && (
+        <TasksView projectId={projectId} currentUserRole={currentUserRole} />
+      )}
 
-      {/* ContractFlow Scope Assessments & Amendments (V3–V5) */}
-      <AmendmentsSection
-        project={project}
-        currentUserRole={currentUserRole}
-        currentAgreement={agreementBundle?.currentAgreement ?? null}
-        overview={cfOverview}
-        onRefresh={fetchProjectDetail}
-      />
+      {activeTab === 'deliverables' && (
+        <DeliverablesView projectId={projectId} currentUserRole={currentUserRole} />
+      )}
+
+      {activeTab === 'collaboration' && (
+        <CollaborationView projectId={projectId} />
+      )}
+
+      {activeTab === 'overview' && (
+        <>
+          {/* Planned Milestones & Deliverables */}
+          <MilestonesPanel
+            project={project}
+            milestones={milestones}
+            editable={milestonesEditable}
+            onChanged={fetchProjectDetail}
+          />
+
+          {/* Initial Project Agreement Workflow */}
+          <AgreementSection
+            project={project}
+            currentUserRole={currentUserRole}
+            milestones={milestones}
+            agreementBundle={agreementBundle}
+            overview={cfOverview}
+            loading={agreementLoading}
+            onRefresh={fetchProjectDetail}
+          />
+
+          {/* ContractFlow Scope Assessments & Amendments (V3–V5) */}
+          <AmendmentsSection
+            project={project}
+            currentUserRole={currentUserRole}
+            currentAgreement={agreementBundle?.currentAgreement ?? null}
+            overview={cfOverview}
+            onRefresh={fetchProjectDetail}
+          />
+        </>
+      )}
     </div>
   );
 }
