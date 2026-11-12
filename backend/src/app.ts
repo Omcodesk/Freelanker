@@ -15,9 +15,24 @@ const app = express();
 app.use(helmet());
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
+const allowedOriginsSet = new Set(env.ALLOWED_ORIGINS);
+
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: (requestOrigin, callback) => {
+      // Allow server-to-server or non-browser tools (curl, Postman, server health checks)
+      if (!requestOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalized = requestOrigin.trim().replace(/\/+$/, '');
+      if (allowedOriginsSet.has(normalized)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin '${requestOrigin}' not allowed by CORS.`));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

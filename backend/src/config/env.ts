@@ -22,10 +22,38 @@ export function normalizeServiceUrl(rawUrl: string): string {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
 }
 
+export function parseAllowedOrigins(primaryFrontendUrl: string, additionalOriginsRaw?: string): string[] {
+  const origins = new Set<string>();
+
+  const add = (url?: string) => {
+    if (!url) return;
+    const trimmed = url.trim().replace(/\/+$/, '');
+    if (trimmed) {
+      origins.add(trimmed);
+    }
+  };
+
+  add(primaryFrontendUrl);
+  add('http://localhost:5173');
+  add('http://127.0.0.1:5173');
+
+  if (additionalOriginsRaw) {
+    for (const part of additionalOriginsRaw.split(',')) {
+      add(part);
+    }
+  }
+
+  return Array.from(origins);
+}
+
 export const env = {
   PORT: parseInt(optionalEnv('PORT', '4000'), 10),
   NODE_ENV: optionalEnv('NODE_ENV', 'development'),
-  FRONTEND_URL: optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
+  FRONTEND_URL: optionalEnv('FRONTEND_URL', 'http://localhost:5173').trim().replace(/\/+$/, ''),
+  ALLOWED_ORIGINS: parseAllowedOrigins(
+    optionalEnv('FRONTEND_URL', 'http://localhost:5173'),
+    process.env.ADDITIONAL_ALLOWED_ORIGINS
+  ),
 
   // These will throw at startup if missing in production
   // In development, they can be empty placeholders

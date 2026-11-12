@@ -1,31 +1,28 @@
-# Render Blueprint for Freelanker Express API + ContractFlow Python Microservice
+# Render Blueprint for Freelanker: React Frontend (Static Site) + Express API + ContractFlow Python Microservice
 # Set all sync: false secrets in the Render Dashboard before deploying.
 
 services:
+  # ─── 1. FRONTEND: React + Vite SPA ──────────────────────────────────────────
   - type: web
-    name: freelanker-contractflow
-    runtime: python
-    buildCommand: pip install -r services/contractflow/requirements.txt
-    startCommand: python -m uvicorn services.contractflow.main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    name: freelanker-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
-      - key: DATABASE_URL
-        sync: false # postgresql://contractflow_app:<URL_ENCODED_PASSWORD>@db.<ref>.supabase.co:5432/postgres?sslmode=require
-      - key: SUPABASE_URL
+      - key: VITE_API_BASE_URL
+        # Set to your deployed API service URL (e.g., https://freelanker-api.onrender.com/api)
         sync: false
-      - key: SUPABASE_JWT_SECRET
+      - key: VITE_SUPABASE_URL
         sync: false
-      - key: SUPABASE_ANON_KEY
+      - key: VITE_SUPABASE_ANON_KEY
         sync: false
-      - key: CONTRACTFLOW_ENABLE_GROQ
-        value: "false"
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile
-      - key: CONTRACTFLOW_TIMEOUT_SECONDS
-        value: "30"
 
+  # ─── 2. BACKEND: Express REST API ───────────────────────────────────────────
   - type: web
     name: freelanker-api
     runtime: node
@@ -37,6 +34,10 @@ services:
       - key: NODE_ENV
         value: production
       - key: FRONTEND_URL
+        # Set to your deployed frontend URL (e.g., https://freelanker-web.onrender.com)
+        sync: false
+      - key: ADDITIONAL_ALLOWED_ORIGINS
+        # Optional comma-separated origins (e.g. custom domain or staging URL)
         sync: false
       - key: SUPABASE_URL
         sync: false
@@ -59,3 +60,30 @@ services:
           property: hostport
       - key: CONTRACTFLOW_PROXY_TIMEOUT_MS
         value: "45000"
+
+  # ─── 3. MICROSERVICE: ContractFlow Python / FastAPI ────────────────────────
+  - type: web
+    name: freelanker-contractflow
+    runtime: python
+    buildCommand: pip install -r services/contractflow/requirements.txt
+    startCommand: python -m uvicorn services.contractflow.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        # Session pooler connection URI using contractflow_app role:
+        # postgresql://contractflow_app:<PASSWORD>@aws-0-ap-south-1.pooler.supabase.com:5432/postgres?sslmode=require
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CONTRACTFLOW_ENABLE_GROQ
+        value: "false"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: CONTRACTFLOW_TIMEOUT_SECONDS
+        value: "30"
